@@ -318,7 +318,7 @@ try {
 
         $success = $true
         $auditLogs.Add([PSCustomObject]@{
-                Message = "Delete account was successful, message $($disableDepartmentRequestResult.message)"
+                Message = "Delete account was successful"
                 IsError = $false
             })
     }
