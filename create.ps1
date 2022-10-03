@@ -5,7 +5,6 @@
 #####################################################
 # Initialize default values
 
-$dryRun = $false
 $p = $person | ConvertFrom-Json
 $success = $false
 $auditLogs = [System.Collections.Generic.List[PSCustomObject]]::new()
