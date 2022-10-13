@@ -19,10 +19,13 @@ $account = [PSCustomObject]@{
     Achternaam         = $p.Name.FamilyName
     Tussenvoegsel      = ''
     EmailAdres         = $p.Accounts.MicrosoftActiveDirectory.mail
-    BestuursNummer     = [int]$config.companyNumber 
+    BestuursNummer     = [int]$config.companyNumber
     SsoIdentifier      = $p.Contact.Business.Email #$p.accounts.MicrosoftActiveDirectory.DisplayName
     PreferredClaimType = 'upn'
 }
+#Brin6
+$departmentBrin6 = $p.PrimaryContract.Department.ExternalId
+
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
@@ -74,7 +77,7 @@ function Get-EsisAccessToken {
             $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
             $headers.Add("Content-Type", "application/x-www-form-urlencoded")
             $body = @{
-                scope         = "idP.Proxy.Full" 
+                scope         = "idP.Proxy.Full"
                 grant_type    = "client_credentials"
                 client_id     = "$($config.ClientId)"
                 client_secret = "$($config.ClientSecret)"
@@ -85,7 +88,7 @@ function Get-EsisAccessToken {
         }
         catch {
             $PSCmdlet.ThrowTerminatingError($_)
-        }    
+        }
     }
 }
 
@@ -114,7 +117,7 @@ function Get-EsisRequestResult {
             Method  = "GET"
             Headers = $Headers
         }
-        
+
         $retryCount = 1
         Start-Sleep 1
         do {
@@ -131,9 +134,9 @@ function Get-EsisRequestResult {
             if ($response.isProcessed -eq $true -and $response.isSuccessful -eq $true) {
                 Write-Verbose -Verbose "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
-            } 
+            }
             else {
-                throw "could not get success confirmation, Error $($response.message), action $($response.action)"              
+                throw "could not get success confirmation, Error $($response.message), action $($response.action)"
             }
         }  While ($true)
     }
@@ -305,14 +308,14 @@ try {
     $headers.Add('X-VendorCode', $config.XVendorCode)
     $headers.Add('X-VerificatieCode', $config.XVerificatieCode)
     $headers.Add('accept', 'application/json')
-    $headers.Add('Vestiging', $config.Department)
+    $headers.Add('Vestiging', $departmentBrin6)
     $headers.Add('Authorization', 'Bearer ' + $accessToken)
     $headers.Add('Content-Type', 'application/json')
 
     $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
 
     $users = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
-           
+
     <# Action to perform if the condition is true #>
     $responseUser = $users.gebruikersLijst.gebruikers.where({ $_.gebruikersnaam -eq $account.GebruikersNaam })
     if (-not($responseUser)) {
@@ -370,7 +373,7 @@ try {
                         Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($account.SsoIdentifier)]"
                         IsError = $false
                     })
-                
+
                 if ($ssoLinkResponseRequestResult.isSuccessful -ne $true) {
                     throw "Could not link user to SSO identifier, Error $($userLinkResponseRequestResult.message)"
                 }
@@ -389,7 +392,7 @@ try {
                     tussenvoegsel  = "$($account.Tussenvoegsel)"
                     emailAdres     = "$($account.EmailAdres)"
                 } | ConvertTo-Json
-            
+
                 $responseSetUser = Set-EsisUser -Headers $headers -Body $body -Username $account.GebruikersNaam
 
                 if ($responseSetUser.status) {
@@ -406,7 +409,7 @@ try {
                 } | ConvertTo-Json
 
                 $ssoLinkResponse = New-EsisLinkUserToSsoIdentifier -Headers $headers -Body $body -Username $account.GebruikersNaam
-                try {                   
+                try {
                     $ssoLinkResponseRequestResult = Get-EsisRequestResult -CorrelationId $ssoLinkResponse.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
                 }
                 catch {

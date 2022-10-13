@@ -44,9 +44,9 @@
         "type": "checkbox",
         "defaultValue": true,
         "templateOptions": {
-          "label": "Toggle debug logging",
-          "description": "When toggled, debug logging will be displayed",
-          "required": false
+            "label": "Toggle debug logging",
+            "description": "When toggled, debug logging will be displayed",
+            "required": false
         }
     },
     {
@@ -76,16 +76,6 @@
         "templateOptions": {
             "label": "CompanyNumber",
             "description": "The CompanyNumber (BestuursNummer) to connect to the API",
-            "required": true
-        }
-    },
-    {
-        "key": "Department",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "label": "Department",
-            "description": "The Department (Vestiging) to connect to the API",
             "required": true
         }
     }

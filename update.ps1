@@ -19,7 +19,7 @@ $account = [PSCustomObject]@{
     Achternaam         = $p.Name.FamilyName
     Tussenvoegsel      = ''
     EmailAdres         = $p.Accounts.MicrosoftActiveDirectory.mail
-    BestuursNummer     = [int]$config.companyNumber 
+    BestuursNummer     = [int]$config.companyNumber
     SsoIdentifier      = $p.accounts.MicrosoftActiveDirectory.DisplayName #$p.Contact.Business.Email
     PreferredClaimType = 'upn'
 }
@@ -31,10 +31,13 @@ $previousAccount = [PSCustomObject]@{
     Achternaam         = $pp.Name.FamilyName
     Tussenvoegsel      = ''
     EmailAdres         = $pp.Accounts.MicrosoftActiveDirectory.mail
-    BestuursNummer     = [int]$config.companyNumber 
+    BestuursNummer     = [int]$config.companyNumber
     SsoIdentifier      = $pp.accounts.MicrosoftActiveDirectory.DisplayName #$pp.Contact.Business.Email
     PreferredClaimType = 'upn'
 }
+
+#Brin6
+$departmentBrin6 = $p.PrimaryContract.Department.ExternalId
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -130,7 +133,7 @@ function Get-EsisAccessToken {
             $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
             $headers.Add("Content-Type", "application/x-www-form-urlencoded")
             $body = @{
-                scope         = "idP.Proxy.Full" 
+                scope         = "idP.Proxy.Full"
                 grant_type    = "client_credentials"
                 client_id     = "$($config.ClientId)"
                 client_secret = "$($config.ClientSecret)"
@@ -141,7 +144,7 @@ function Get-EsisAccessToken {
         }
         catch {
             $PSCmdlet.ThrowTerminatingError($_)
-        }    
+        }
     }
 }
 
@@ -172,7 +175,7 @@ function Get-EsisRequestResult {
             Method  = "GET"
             Headers = $Headers
         }
-        
+
         $retryCount = 1
         Start-Sleep 1
         do {
@@ -189,9 +192,9 @@ function Get-EsisRequestResult {
             if ($response.isProcessed -eq $true -and $response.isSuccessful -eq $true) {
                 Write-Verbose -Verbose "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
-            }  
+            }
             else {
-                throw "Could not get result, Error $($response.message), action $($response.action)"              
+                throw "Could not get result, Error $($response.message), action $($response.action)"
             }
         }  While ($true)
     }
@@ -283,12 +286,12 @@ try {
             'Update' {
                 Write-Verbose "Updating esis account with accountReference: [$aRef]"
                 $accessToken = Get-EsisAccessToken
-                        
+
                 $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
                 $headers.Add('X-VendorCode', $config.XVendorCode)
                 $headers.Add('X-VerificatieCode', $config.XVerificatieCode)
                 $headers.Add('accept', 'application/json')
-                $headers.Add('Vestiging', $config.Department)
+                $headers.Add('Vestiging', $departmentBrin6)
                 $headers.Add('Authorization', 'Bearer ' + $accessToken)
                 $headers.Add('Content-Type', 'application/json')
 
@@ -357,6 +360,6 @@ finally {
             Auditlogs = $auditLogs
         }
     }
-    
+
     Write-Output $result | ConvertTo-Json -Depth 10
 }

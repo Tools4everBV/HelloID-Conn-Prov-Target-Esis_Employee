@@ -19,6 +19,9 @@ switch ($($config.IsDebug)) {
     $false { $VerbosePreference = 'SilentlyContinue' }
 }
 
+#Brin6
+$departmentBrin6 = $p.PrimaryContract.Department.ExternalId
+
 #Set amount of times and duration function need to get result of request
 $MaxRetrycount = 5
 $RetryWaitDuration = 3
@@ -104,7 +107,7 @@ function Get-EsisAccessToken {
             $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
             $headers.Add("Content-Type", "application/x-www-form-urlencoded")
             $body = @{
-                scope         = "idP.Proxy.Full" 
+                scope         = "idP.Proxy.Full"
                 grant_type    = "client_credentials"
                 client_id     = "$($config.ClientId)"
                 client_secret = "$($config.ClientSecret)"
@@ -115,7 +118,7 @@ function Get-EsisAccessToken {
         }
         catch {
             $PSCmdlet.ThrowTerminatingError($_)
-        }    
+        }
     }
 }
 
@@ -146,7 +149,7 @@ function Get-EsisRequestResult {
             Method  = "GET"
             Headers = $Headers
         }
-        
+
         $retryCount = 1
         Start-Sleep 1
         do {
@@ -163,10 +166,10 @@ function Get-EsisRequestResult {
             if ($response.isProcessed -eq $true -and $response.isSuccessful -eq $true) {
                 Write-Verbose -Verbose "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
-            } 
+            }
             else {
-                throw "Could not get result, Error $($response.message), action $($response.action)"              
-            }    
+                throw "Could not get result, Error $($response.message), action $($response.action)"
+            }
         }  While ($true)
     }
     catch {
@@ -248,7 +251,7 @@ function Get-EsisUserAndEmployeeList {
     }
     catch {
         $PSCmdlet.ThrowTerminatingError($_)
-    }  
+    }
 }
 
 function New-EsisUnLinkUserToSsoIdentifier {
@@ -294,12 +297,12 @@ try {
     if (-not($dryRun -eq $true)) {
         Write-Verbose "Deleting Esis account with accountReference: [$aRef]"
         $accessToken = Get-EsisAccessToken
-                
+
         $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
         $headers.Add('X-VendorCode', $config.XVendorCode)
         $headers.Add('X-VerificatieCode', $config.XVerificatieCode)
         $headers.Add('accept', 'application/json')
-        $headers.Add('Vestiging', $config.Department)
+        $headers.Add('Vestiging', $departmentBrin6)
         $headers.Add('Authorization', 'Bearer ' + $accessToken)
         $headers.Add('Content-Type', 'application/json')
 
@@ -318,7 +321,7 @@ try {
 
         $success = $true
         $auditLogs.Add([PSCustomObject]@{
-                Message = "Delete account was successful"
+                Message = "Delete account was successful, message $($disableDepartmentRequestResult.message)"
                 IsError = $false
             })
     }

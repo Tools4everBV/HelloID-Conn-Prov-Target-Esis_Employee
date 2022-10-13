@@ -27,16 +27,12 @@ _HelloID-Conn-Prov-Target-Esis-employee_ is a _target_ connector. Esis-employee 
 
 The following settings are required to connect to the API.z
 
-| Setting           | Description                                               | Mandatory   |
-| ------------      | -----------                                               | ----------- |
-| BaseURL           | The url to send the API requests to                       | Yes         |
-| BaseUrlToken      | The url to send te request for a token                    | Yes         |
-| ClientId          | The id needed to get the token                            | Yes         |
-| ClientSecret      | The secret needed to get the token                        | Yes         |
-| XVendorCode       | The code needed to for the headers of the api request     | Yes         |
-| XVerificatieCode  | The code needed to for the headers of the api request     | Yes         |
-| CompanyNumber     | The company number needed in the uri of the api request   | Yes         |
-| Department        | The department needed for the headers of the api request  | Yes         |
+| Setting      | Description                            | Mandatory   |
+| ------------ | -----------                            | ----------- |
+| BaseURL      | The url to send the API requests to    | Yes         |
+| BaseUrlToken | The url to send te request for a token | Yes         |
+| ClientId     | The id needed to get the token         | Yes         |
+| ClientSecret | The secret needed to get the token     | Yes         |
 
 ### Prerequisites
 
