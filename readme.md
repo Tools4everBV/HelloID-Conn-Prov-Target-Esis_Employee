@@ -20,7 +20,7 @@
 
 ## Introduction
 
-_HelloID-Conn-Prov-Target-Esis-employee_ is a _target_ connector. Esis-employee provides a set of REST API's that allow you to programmatically interact with it's data. The connector manages Account Management And links the SSO Identifier. Authorization and group Management is out of scope.
+_HelloID-Conn-Prov-Target-Esis-employee_ is a _target_ connector. Esis-employee provides a set of REST API's that allow you to programmatically interact with it's data. The connector manages Account Management And links the SSO Identifier. Authorization and group Management is out of scope. Although it's possible to activate a person to multiple departments.
 ## Getting started
 
 ### Connection settings
@@ -36,19 +36,64 @@ The following settings are required to connect to the API.z
 | XVendorCode       | The code needed to for the headers of the api request     | Yes         |
 | XVerificatieCode  | The code needed to for the headers of the api request     | Yes         |
 | CompanyNumber     | The company number needed in the uri of the api request   | Yes         |
-| Department        | The department needed for the headers of the api request  | Yes         |
+
 
 ### Prerequisites
+- A Brin6 code is required to use the connector. Preferable in a Custom property or a code from HR.
+- A mapping availible between HR function Title and Esis Role (Leraar, Director, etc..)
 
 ### Remarks
 - The webservice does not support verifying if the SSO identifier is linked or not therefore it is not updated in the update script
 - The webservice does not support looking up a single person. The script can be a bit slower because it needs to loop through every person
 - The webservice is event based, because of this there is some retry logic in the script you change how often it retries and how long it has to wait before retrying again with the variables $MaxRetrycount and $RetryWaitDuration.
-- Username is the unique value from a employee, this value is used in the requests to the webservice. This value can be changed when updating a user
+- Username is the unique value from a employee, this value is used in the requests to the webservice. This value can be changed when updating a user.
+- The disable and enable scripts are not used. And the activation of the department is managed with dynamic Permissions. This is because it's possible to activate persons in multiple departments. The activation is automatically calculated based on unique brin6 in contracts in scope. 
+- Activation on a department also requires a Function Role. The mapping for the function roles can be configured in the grant script. (See below)
+
 
 ## Setup the connector
 
 > _How to setup the connector in HelloID._ Are special settings required. Like the _primary manager_ settings for a source connector.
+
+#### Script Settings
+* Besides the configuration tab, you can also configure script variables. To decide which property from a HelloID contract holds the Brin6 department code. And you can configure the primary contract calculation for each Brin6 Department (Only used in Permission scripts). Please note that some "same" configuration takes place in multiple scripts. Shown as below:
+
+#### Create / Update and Delete.ps1
+
+
+  ```PowerShell
+#Brin6
+$departmentBrin6 = $p.PrimaryContract.Department.ExternalId
+```
+
+#### Grant.ps1
+
+  ```PowerShell
+# Role| Function Mapping
+$defaultFunction = 'Leraar'
+
+$mappingHashTableFunctions = @{  # $functionContractProperty  value from
+    MEDSBI  = 'Director'
+    MEDSBI2 = 'Director'
+    MEDSBI3 = 'Support'
+}
+
+#Script Configuration
+$brin6ContractProperty = { $_.Department.ExternalId }
+$functionContractProperty = { $_.Title.ExternalId }
+
+# Primary Contract Calculation foreach employment
+$firstProperty = @{ Expression = { $_.Details.Fte } ; Descending = $true }
+$secondProperty = @{ Expression = { $_.Details.HoursPerWeek }; Descending = $false }
+
+# Priority Calculation Order (High priority -> Low priority)
+$splatSortObject = @{
+    Property = @(
+        $firstProperty,
+        $secondProperty)
+}
+  ```
+
 
 ## Getting help
 
