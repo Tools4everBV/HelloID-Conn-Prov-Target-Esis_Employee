@@ -135,12 +135,12 @@ function Get-EsisRequestResult {
                 Write-Verbose -Verbose "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
             }
-            else {
+             else {
                 throw "could not get success confirmation, Error $($response.message), action $($response.action)"
             }
         }  While ($true)
     }
-    catch {
+     catch {
         Write-Verbose -Verbose $splatRestRequest.Uri
         $PSCmdlet.ThrowTerminatingError($_)
     }
@@ -202,11 +202,11 @@ function Get-EsisUserAndEmployeeList {
                 Write-Verbose -Verbose "Job completed, get user employee list"
                 return $response
             }
-            catch {
+             catch {
                 if ($retryCount -gt $MaxRetrycount) {
                     Throw "Could not send Information after $($MaxRetrycount) retrys."
                 }
-                else {
+                 else {
                     Write-Verbose -Verbose "Could not send Information retrying in $($RetryWaitDuration) seconds..."
                     Start-Sleep -Seconds $RetryWaitDuration
                     $retryCount = $retryCount + 1
@@ -215,7 +215,7 @@ function Get-EsisUserAndEmployeeList {
         }
         While ($true)
     }
-    catch {
+     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -240,7 +240,7 @@ function New-EsisUser {
         Write-Verbose -Verbose $response
         Write-Output $response
     }
-    catch {
+     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -267,7 +267,7 @@ function Set-EsisUser {
         $response = Invoke-RestMethod @splatRestRequest -verbose:$false
         Write-Output $response
     }
-    catch {
+     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -295,7 +295,7 @@ function New-EsisLinkUserToSsoIdentifier {
         $response = Invoke-RestMethod @splatRestRequest -verbose:$false
         Write-Output $response
     }
-    catch {
+     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -316,17 +316,19 @@ try {
 
     $users = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
 
+    $responseEmployee = $users.gebruikersLijst.medewerkers.where({ $_.basispoortEmailadres -eq $account.GebruikersNaam })
+
     <# Action to perform if the condition is true #>
     $responseUser = $users.gebruikersLijst.gebruikers.where({ $_.gebruikersnaam -eq $account.GebruikersNaam })
     if (-not($responseUser)) {
         $action = 'Create-Correlate'
         Write-Verbose -Verbose 'Create Correlate'
     }
-    elseif ($updatePerson -eq $true) {
+     elseif ($updatePerson -eq $true) {
         $action = 'Update-Correlate'
         Write-Verbose -Verbose 'Update-Correlate'
     }
-    else {
+     else {
         $action = 'Correlate'
         Write-Verbose -Verbose 'Correlate'
     }
@@ -349,8 +351,13 @@ try {
                     roepnaam       = "$($account.Roepnaam)"
                     tussenvoegsel  = "$($account.Tussenvoegsel)"
                     emailAdres     = "$($account.EmailAdres)"
-                } | ConvertTo-Json
-                $responseNewUser = New-EsisUser -Headers $headers -Body $body
+                }
+                if (($responseEmployee )) {
+                    Write-Verbose "Creating account at Existing Employee $($responseEmployee.basispoortEmailadres)"
+                    $body['medewerkerID'] = $responseEmployee.medewerkerID
+                }
+
+                $responseNewUser = New-EsisUser -Headers $headers -Body ( $body | ConvertTo-Json)
 
                 if ($responseNewUser.status) {
                     throw "Could not create user, Error $($responseNewUser.errors)"
@@ -358,21 +365,23 @@ try {
 
                 $null = Get-EsisRequestResult -CorrelationId $responseNewUser.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
 
-                $body = @{
-                    bestuursnummer     = $account.BestuursNummer
-                    gebruikersNaam     = "$($account.GebruikersNaam)"
-                    ssoIdentifier      = "$($account.SsoIdentifier)"
-                    preferredClaimType = "$($account.preferredClaimType)"
-                } | ConvertTo-Json
+                if (-not ($responseEmployee )) {
+                    $body = @{
+                        bestuursnummer     = $account.BestuursNummer
+                        gebruikersNaam     = "$($account.GebruikersNaam)"
+                        ssoIdentifier      = "$($account.SsoIdentifier)"
+                        preferredClaimType = "$($account.preferredClaimType)"
+                    } | ConvertTo-Json
 
-                $ssoLinkResponse = New-EsisLinkUserToSsoIdentifier -Headers $headers -Body $body -Username $account.GebruikersNaam
-                $ssoLinkResponseRequestResult = Get-EsisRequestResult -CorrelationId $ssoLinkResponse.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
+                    $ssoLinkResponse = New-EsisLinkUserToSsoIdentifier -Headers $headers -Body $body -Username $account.GebruikersNaam
+                    $ssoLinkResponseRequestResult = Get-EsisRequestResult -CorrelationId $ssoLinkResponse.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
 
 
-                $auditLogs.Add([PSCustomObject]@{
-                        Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($account.SsoIdentifier)]"
-                        IsError = $false
-                    })
+                    $auditLogs.Add([PSCustomObject]@{
+                            Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($account.SsoIdentifier)]"
+                            IsError = $false
+                        })
+                }
 
                 if ($ssoLinkResponseRequestResult.isSuccessful -ne $true) {
                     throw "Could not link user to SSO identifier, Error $($userLinkResponseRequestResult.message)"
@@ -422,9 +431,9 @@ try {
                 }
 
                 $auditLogs.Add([PSCustomObject]@{
-                        Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($account.SsoIdentifier)]"
-                        IsError = $false
-                    })
+                    Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($account.SsoIdentifier)]"
+                    IsError = $false
+                })
 
                 $accountReference = $responseUser[0].gebruikersnaam
                 break

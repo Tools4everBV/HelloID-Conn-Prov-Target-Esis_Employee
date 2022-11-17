@@ -15,6 +15,7 @@
   + [Prerequisites](#Prerequisites)
   + [Remarks](#Remarks)
 - [Setup the connector](@Setup-The-Connector)
+- [Correlation](#Correlation)
 - [Getting help](#Getting-help)
 - [HelloID Docs](#HelloID-docs)
 
@@ -40,20 +41,37 @@ The following settings are required to connect to the API.z
 
 ### Prerequisites
 - A Brin6 code is required to use the connector. Preferable in a Custom property or a code from HR.
-- A mapping availible between HR function Title and Esis Role (Leraar, Director, etc..)
+- A mapping available between HR function Title and Esis Role (Leraar, Director, etc..)
 
 ### Remarks
 - The webservice does not support verifying if the SSO identifier is linked or not therefore it is not updated in the update script
 - The webservice does not support looking up a single person. The script can be a bit slower because it needs to loop through every person
 - The webservice is event based, because of this there is some retry logic in the script you change how often it retries and how long it has to wait before retrying again with the variables $MaxRetrycount and $RetryWaitDuration.
 - Username is the unique value from a employee, this value is used in the requests to the webservice. This value can be changed when updating a user.
-- The disable and enable scripts are not used. And the activation of the department is managed with dynamic Permissions. This is because it's possible to activate persons in multiple departments. The activation is automatically calculated based on unique brin6 in contracts in scope. 
+- The disable and enable scripts are not used. And the activation of the department is managed with dynamic Permissions. This is because it's possible to activate persons in multiple departments. The activation is automatically calculated based on unique brin6 in contracts in scope.
 - Activation on a department also requires a Function Role. The mapping for the function roles can be configured in the grant script. (See below)
+- Correlation cannot be performed on a EmployeeNr, we must correlate on login name or mail: See [Correlation](#Correlation)
 
 
 ## Setup the connector
 
 > _How to setup the connector in HelloID._ Are special settings required. Like the _primary manager_ settings for a source connector.
+
+
+#### Correlation
+ - In ESIS, there are employees and user accounts, with a 1 on 1 relation. Both objects do not have a property like an Employee Number. So correlation must be performed on, for example loginname or email address.
+ - By default, we correlate the users account on **LoginName** and the Employee Object on **basispoortEmailadres** against the **GebruikersNaam** from the account object.
+  Please verify during implementation if this match the business needs. You can change this, in the code itself:
+ ```PowerShell
+  # Correlation properties Employee Object
+  # Only needed if your implementation contains Employees without User accounts.
+  $responseEmployee = $users.gebruikersLijst.medewerkers.where({ $_.basispoortEmailadres -eq $account.GebruikersNaam })
+
+  # Correlation properties User Account Object
+  $responseUser = $users.gebruikersLijst.gebruikers.where({ $_.gebruikersnaam -eq $account.GebruikersNaam })
+
+  ```
+
 
 #### Script Settings
 * Besides the configuration tab, you can also configure script variables. To decide which property from a HelloID contract holds the Brin6 department code. And you can configure the primary contract calculation for each Brin6 Department (Only used in Permission scripts). Please note that some "same" configuration takes place in multiple scripts. Shown as below:
@@ -61,7 +79,7 @@ The following settings are required to connect to the API.z
 #### Create / Update and Delete.ps1
 
 
-  ```PowerShell
+```PowerShell
 #Brin6
 $departmentBrin6 = $p.PrimaryContract.Department.ExternalId
 ```
