@@ -308,8 +308,8 @@ try {
                 $null = Get-EsisRequestResult -CorrelationId $responseUpdateUser.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
 
                 if ($account.GebruikersNaam -ne $previousAccount.GebruikersNaam) {
-                    $accountReference = $account.gebruikersnaam
-                    Write-Verbose "AccountReference is updated to: [$accountReference]"
+                    $aRef = $account.gebruikersnaam
+                    Write-Verbose "AccountReference is updated to: [$aRef]"
                 }
                 break
             }
@@ -345,12 +345,15 @@ catch {
         })
 }
 finally {
-    if ($null -ne $accountReference) {
+    if ($null -ne $aRef) {
         $result = [PSCustomObject]@{
             Success          = $success
-            AccountReference = $accountReference
+            AccountReference = $aRef
             Account          = $account
             Auditlogs        = $auditLogs
+            ExportData = [PSCustomObject]@{
+                GebruikersNaam  = $aRef
+            }
         }
     }
     else {
