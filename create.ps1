@@ -481,6 +481,9 @@ finally {
         AccountReference = $accountReference
         Auditlogs        = $auditLogs
         Account          = $account
+        ExportData = [PSCustomObject]@{
+            GebruikersNaam  = $accountReference
+        }
     }
     Write-Output $result | ConvertTo-Json -Depth 10
 }
