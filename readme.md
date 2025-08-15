@@ -67,13 +67,6 @@ The following features are available:
 
 The following settings are required to connect to the API.
 
-| Setting  | Description                        | Mandatory |
-| -------- | ---------------------------------- | --------- |
-| UserName | The UserName to connect to the API | Yes       |
-| Password | The Password to connect to the API | Yes       |
-| BaseUrl  | The URL to the API                 | Yes       |
-
-
 | Setting          | Description                                 | Mandatory |
 | ---------------- | ------------------------------------------- | --------- |
 | BaseUrl          | The URL to the API                          | Yes       |
