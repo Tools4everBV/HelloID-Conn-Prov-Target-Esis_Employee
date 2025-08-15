@@ -12,7 +12,7 @@
             "Update"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail !== 'undefined' && Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail) {\\r\\n            mail = Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
@@ -80,7 +80,7 @@
             "Update"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail !== 'undefined' && Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail) {\\r\\n            mail = Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
@@ -97,7 +97,7 @@
             "Update"
           ],
           "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail !== 'undefined' && Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail) {\\r\\n            mail = Person.Accounts._93b1b89dce7c48799f8162b00af370bc.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
+          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
