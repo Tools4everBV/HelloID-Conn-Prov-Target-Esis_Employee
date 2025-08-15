@@ -1,98 +1,48 @@
-#####################################################
-# HelloID-Conn-Prov-Target-Esis-Delete
-#
-# Version: 1.0.0
-#####################################################
-# Initialize default values
-$config = $configuration | ConvertFrom-Json
-$p = $person | ConvertFrom-Json
-$aRef = $AccountReference | ConvertFrom-Json
-$success = $false
-$auditLogs = [System.Collections.Generic.List[PSCustomObject]]::new()
+##################################################
+# HelloID-Conn-Prov-Target-Esis-Employee-Delete
+# PowerShell V2
+##################################################
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
-# Set debug logging
-switch ($($config.IsDebug)) {
-    $true { $VerbosePreference = 'Continue' }
-    $false { $VerbosePreference = 'SilentlyContinue' }
-}
-
-#Brin6
-$departmentBrin6 = $p.PrimaryContract.Department.ExternalId
-
-#Set amount of times and duration function need to get result of request
-$MaxRetrycount = 5
-$RetryWaitDuration = 3
-
 #region functions
-function Invoke-EsisRestMethod {
+function Resolve-Esis-EmployeeError {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $Method,
-
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $Uri,
-
         [object]
-        $Body,
-
-        [string]
-        $ContentType = 'application/json',
-
-        [Parameter(Mandatory)]
-        [System.Collections.IDictionary]
-        $Headers
-    )
-
-    process {
-        try {
-            $splatParams = @{
-                Uri         = $Uri
-                Headers     = $Headers
-                Method      = $Method
-                ContentType = $ContentType
-            }
-
-            if ($Body) {
-                Write-Verbose 'Adding body to request'
-                $splatParams['Body'] = $Body
-            }
-            Invoke-RestMethod @splatParams -Verbose:$false
-        }
-        catch {
-            $PSCmdlet.ThrowTerminatingError($_)
-        }
-    }
-}
-
-function Resolve-HTTPError {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
-        [object]$ErrorObject
+        $ErrorObject
     )
     process {
         $httpErrorObj = [PSCustomObject]@{
-            FullyQualifiedErrorId = $ErrorObject.FullyQualifiedErrorId
-            MyCommand             = $ErrorObject.InvocationInfo.MyCommand
-            RequestUri            = $ErrorObject.TargetObject.RequestUri
-            ScriptStackTrace      = $ErrorObject.ScriptStackTrace
-            ErrorMessage          = ''
+            ScriptLineNumber = $ErrorObject.InvocationInfo.ScriptLineNumber
+            Line             = $ErrorObject.InvocationInfo.Line
+            ErrorDetails     = $ErrorObject.Exception.Message
+            FriendlyMessage  = $ErrorObject.Exception.Message
         }
-        if ($ErrorObject.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') {
-            $httpErrorObj.ErrorMessage = $ErrorObject.ErrorDetails.Message
+        if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
+            $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
+        } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+            if ($null -ne $ErrorObject.Exception.Response) {
+                $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+                if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
+                    $httpErrorObj.ErrorDetails = $streamReaderResponse
+                }
+            }
         }
-        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
-            $httpErrorObj.ErrorMessage = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
+        try {
+            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
+            if ($null -ne $errorDetailsObject.error) {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject.error
+            } elseif ($null -ne $errorDetailsObject.errors.Brin6) {
+                $httpErrorObj.FriendlyMessage = $errorDetailsObject.errors.Brin6 -join ', '
+            } else {
+                $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails
+            }
+
+        } catch {
+            $httpErrorObj.FriendlyMessage = "Error: [$($httpErrorObj.ErrorDetails)] [$($_.Exception.Message)]"
         }
         Write-Output $httpErrorObj
     }
@@ -104,19 +54,19 @@ function Get-EsisAccessToken {
     )
     process {
         try {
-            $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
-            $headers.Add("Content-Type", "application/x-www-form-urlencoded")
+            $headers = @{
+                'Content-Type' = 'application/x-www-form-urlencoded'
+            }
             $body = @{
-                scope         = "idP.Proxy.Full"
-                grant_type    = "client_credentials"
-                client_id     = "$($config.ClientId)"
-                client_secret = "$($config.ClientSecret)"
+                scope         = 'idP.Proxy.Full'
+                grant_type    = 'client_credentials'
+                client_id     = "$($actionContext.Configuration.ClientId)"
+                client_secret = "$($actionContext.Configuration.ClientSecret)"
             }
 
-            $response = Invoke-RestMethod $config.BaseUrlToken -Method "POST" -Headers $headers -Body $body -verbose:$false
+            $response = Invoke-RestMethod $actionContext.Configuration.BaseUrlToken -Method 'POST' -Headers $headers -Body $body
             Write-Output $response.access_token
-        }
-        catch {
+        } catch {
             $PSCmdlet.ThrowTerminatingError($_)
         }
     }
@@ -129,9 +79,7 @@ function Get-EsisRequestResult {
         [object]
         $Headers,
 
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
+        [Parameter(Mandatory)]
         [string]
         $CorrelationId,
 
@@ -145,35 +93,33 @@ function Get-EsisRequestResult {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($config.BaseUrl)/v1/api/bestuur/$($config.companyNumber)/verzoekresultaat/$($correlationId)"
-            Method  = "GET"
+            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/verzoekresultaat/$($correlationId)"
+            Method  = 'GET'
             Headers = $Headers
         }
 
         $retryCount = 1
         Start-Sleep 1
         do {
-            $response = Invoke-RestMethod @splatRestRequest -verbose:$false
+            $response = Invoke-RestMethod @splatRestRequest
 
             if ($response.isProcessed -eq $false) {
-                if ($retryCount -gt $MaxRetrycount) {
-                    Throw "Could not send Information after $($MaxRetrycount) retrys."
+                if ($retryCount -gt $MaxRetryCount) {
+                    throw "Could not send Information after $($MaxRetryCount) retries."
                 }
                 Start-Sleep -Seconds $RetryWaitDuration
                 $retryCount++
                 continue
             }
             if ($response.isProcessed -eq $true -and $response.isSuccessful -eq $true) {
-                Write-Verbose -Verbose "Job completed, Message [$($response.message)], action [$($response.action)]"
+                Write-Information "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
+            } else {
+                throw "Could not get success confirmation, Error $($response.message), action $($response.action)"
             }
-            else {
-                throw "Could not get result, Error $($response.message), action $($response.action)"
-            }
-        }  While ($true)
-    }
-    catch {
-        Write-Verbose -Verbose $splatRestRequest.Uri
+        }  while ($true)
+    } catch {
+        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -186,15 +132,14 @@ function Get-EsisUserEmployeeRequest {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($config.BaseUrl)/v1/api/bestuur/$($config.companyNumber)/gebruikermedewerkerlijstverzoek/"
+            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijstverzoek/"
             Method  = "GET"
             Headers = $Headers
         }
-        $response = Invoke-RestMethod @splatRestRequest -verbose:$false
+        $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response.correlationId
-    }
-    catch {
-        Write-Verbose -Verbose $splatRestRequest.Uri
+    } catch {
+        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -205,14 +150,12 @@ function Get-EsisUserAndEmployeeList {
         [Parameter(Mandatory)]
         [object]$Headers,
 
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
+        [Parameter(Mandatory)]
         [string]$CorrelationId,
 
         [Parameter()]
         [int]
-        $MaxRetrycount = 5,
+        $MaxRetryCount = 5,
 
         [Parameter()]
         [int]
@@ -221,35 +164,32 @@ function Get-EsisUserAndEmployeeList {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($config.BaseUrl)/v1/api/bestuur/$($config.companyNumber)/gebruikermedewerkerlijst/$($correlationId)"
-            Method  = "GET"
+            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijst/$($correlationId)"
+            Method  = 'GET'
             Headers = $Headers
         }
         $retryCount = 1
         Start-Sleep 1
         do {
             try {
-                $response = Invoke-RestMethod @splatRestRequest -verbose:$false
+                $response = Invoke-RestMethod @splatRestRequest
                 if ($response.isProcessed -eq $false) {
                     throw "Could not get result, Error $($response.message), action $($response.action)"
                 }
-                Write-Verbose -Verbose "Job completed, get user employee list"
+                Write-Information 'Job completed, get user employee list'
                 return $response
-            }
-            catch {
-                if ($retryCount -gt $MaxRetrycount) {
-                    Throw "Could not send Information after $($MaxRetrycount) retrys."
-                }
-                else {
-                    Write-Verbose -Verbose "Could not send Information retrying in $($RetryWaitDuration) seconds..."
+            } catch {
+                if ($retryCount -gt $MaxRetryCount) {
+                    throw "Could not retrieve response after $($MaxRetryCount) retries. isProcessed: $($response.isProcessed), isSuccessful: $($response.isSuccessful)"
+                } else {
+                    Write-Information "Could not send Information retrying in $($RetryWaitDuration) seconds..."
                     Start-Sleep -Seconds $RetryWaitDuration
                     $retryCount = $retryCount + 1
                 }
             }
         }
-        While ($true)
-    }
-    catch {
+        while ($true)
+    } catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -260,93 +200,105 @@ function New-EsisUnLinkUserToSsoIdentifier {
         [Parameter(Mandatory)]
         [object]$Headers,
 
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
+        [Parameter(Mandatory)]
         [object]$Body,
 
-        [Parameter(Mandatory,
-            ValueFromPipeline
-        )]
+        [Parameter(Mandatory)]
         [string]$Username
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($config.BaseUrl)/v1/api/gebruiker/$($Username)/ontkoppelenssoidentifier"
-            Method  = "DELETE"
+            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/ontkoppelenssoidentifier"
+            Method  = 'DELETE'
             Headers = $Headers
             Body    = $Body
         }
-        $response = Invoke-RestMethod @splatRestRequest -verbose:$false
+        $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response
-    }
-    catch {
+    } catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
 #endregion
 
 try {
-    # Add an auditMessage showing what will happen during enforcement
-    if ($dryRun -eq $true) {
-        $auditLogs.Add([PSCustomObject]@{
-                Message = "Delete Esis account from: [$($p.DisplayName)] will be executed during enforcement"
-            })
+    # Verify if [References.Account] has a value
+    if ([string]::IsNullOrEmpty($($actionContext.References.Account))) {
+        throw 'The account reference could not be found'
     }
 
-    if (-not($dryRun -eq $true)) {
-        Write-Verbose "Deleting Esis account with accountReference: [$aRef]"
-        $accessToken = Get-EsisAccessToken
-
-        $headers = [System.Collections.Generic.Dictionary[[String], [String]]]::new()
-        $headers.Add('X-VendorCode', $config.XVendorCode)
-        $headers.Add('X-VerificatieCode', $config.XVerificatieCode)
-        $headers.Add('accept', 'application/json')
-        $headers.Add('Vestiging', $departmentBrin6)
-        $headers.Add('Authorization', 'Bearer ' + $accessToken)
-        $headers.Add('Content-Type', 'application/json')
-
-        $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
-        $users = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
-
-        $responseUser = $users.gebruikersLijst.gebruikers.where({ $_.gebruikersnaam -eq $aRef })
-
-        $body = @{
-            bestuursnummer = $config.CompanyNumber
-            gebruikersNaam = "$($aRef)"
-        } | ConvertTo-Json
-
-        $ssoUnLinkResponse = New-EsisUnLinkUserToSsoIdentifier -Headers $headers -Body $body -Username $aRef
-        $null = Get-EsisRequestResult -CorrelationId $ssoUnLinkResponse.correlationId -Headers $headers -MaxRetrycount $MaxRetrycount -RetryWaitDuration $RetryWaitDuration
-
-        $success = $true
-        $auditLogs.Add([PSCustomObject]@{
-                Message = "Delete account was successful, message $($disableDepartmentRequestResult.message)"
-                IsError = $false
-            })
+    $accessToken = Get-EsisAccessToken
+    $headers = @{
+        'X-VendorCode'      = $actionContext.Configuration.XVendorCode
+        'X-VerificatieCode' = $actionContext.Configuration.XVerificatieCode
+        Accept              = 'application/json'
+        # Vestiging           = $actionContext.Data._extension.departmentBrin6
+        Authorization       = "Bearer $($accessToken)"
+        'Content-Type'      = 'application/json'
     }
-}
-catch {
-    $success = $false
+
+    Write-Information 'Verifying if a Esis-Employee account exists'
+    $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
+    $users = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers
+
+    $correlatedAccount = $users.gebruikersLijst.gebruikers | Where-Object { $_.Emailadres -eq $actionContext.References.Account }
+
+    if (-not $correlatedAccount) {
+        $action = 'NotFound'
+    } elseif ($correlatedAccount.Count -gt 1) {
+        throw "Multiple accounts found for person where [Emailadres] is: [$($actionContext.References.Account)]"
+    } elseif ($correlatedAccount) {
+        $action = 'DeleteAccount'
+    }
+
+    # Process
+    switch ($action) {
+        'DeleteAccount' {
+            $body = @{
+                bestuursnummer = $actionContext.Configuration.CompanyNumber
+                gebruikersNaam = "$($actionContext.References.Account)"
+            } | ConvertTo-Json
+
+            if (-not($actionContext.DryRun -eq $true)) {
+                Write-Information "Deleting Esis-Employee account with accountReference: [$($actionContext.References.Account)]"
+                $ssoUnLinkResponse = New-EsisUnLinkUserToSsoIdentifier -Headers $headers -Body $body -Username $actionContext.References.Account
+                $null = Get-EsisRequestResult -CorrelationId $ssoUnLinkResponse.correlationId -Headers $headers
+            } else {
+                Write-Information "[DryRun] Delete Esis-Employee account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
+            }
+
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Delete account [$($actionContext.References.Account)] was successful"
+                    IsError = $false
+                })
+            break
+        }
+
+        'NotFound' {
+            Write-Information "Esis-Employee account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
+            $outputContext.Success = $true
+            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                    Message = "Esis-Employee account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
+                    IsError = $false
+                })
+            break
+        }
+    }
+} catch {
+    $outputContext.success = $false
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
-        $errorObj = Resolve-HTTPError -ErrorObject $ex
-        $errorMessage = "Could not delete Esis account. Error: $($errorObj.ErrorMessage)"
+        $errorObj = Resolve-Esis-EmployeeError -ErrorObject $ex
+        $auditMessage = "Could not delete Esis-Employee account. Error: $($errorObj.FriendlyMessage)"
+        Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
+    } else {
+        $auditMessage = "Could not delete Esis-Employee account. Error: $($_.Exception.Message)"
+        Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
-    else {
-        $errorMessage = "Could not delete Esis account. Error: $($ex.Exception.Message)"
-    }
-    Write-Verbose $errorMessage
-    $auditLogs.Add([PSCustomObject]@{
-            Message = $errorMessage
+    $outputContext.AuditLogs.Add([PSCustomObject]@{
+            Message = $auditMessage
             IsError = $true
         })
-}
-finally {
-    $result = [PSCustomObject]@{
-        Success   = $success
-        Auditlogs = $auditLogs
-    }
-    Write-Output $result | ConvertTo-Json -Depth 10
 }

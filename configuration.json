@@ -1,82 +1,72 @@
 [
-    {
-        "key": "ClientId",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "label": "ClientId",
-            "description": "The ClientId to connect to the API",
-            "required": true
-        }
+  {
+    "defaultValue": "",
+    "key": "ClientId",
+    "templateOptions": {
+      "description": "The ClientId to connect to the API",
+      "label": "ClientId",
+      "required": true
     },
-    {
-        "key": "ClientSecret",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "type": "password",
-            "label": "ClientSecret",
-            "required": true
-        }
-    },
-    {
-        "key": "BaseUrl",
-        "type": "input",
-        "defaultValue": "https://proxies-<environment>.rovictonline.nl/idp-proxy",
-        "templateOptions": {
-            "label": "BaseUrl",
-            "description": "The URL to the API.",
-            "required": true
-        }
-    },
-    {
-        "key": "BaseUrlToken",
-        "type": "input",
-        "defaultValue": "https://sts-dev.rovictonline.nl/connect/token",
-        "templateOptions": {
-            "label": "BaseUrlToken",
-            "description": "The URL to get the bearer token.",
-            "required": true
-        }
-    },
-    {
-        "key": "IsDebug",
-        "type": "checkbox",
-        "defaultValue": true,
-        "templateOptions": {
-            "label": "Toggle debug logging",
-            "description": "When toggled, debug logging will be displayed",
-            "required": false
-        }
-    },
-    {
-        "key": "XVendorCode",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "label": "XVendorCode",
-            "description": "The XVendorCode to connect to the API",
-            "required": true
-        }
-    },
-    {
-        "key": "XVerificatieCode",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "label": "XVerificatieCode",
-            "description": "The XVerificatieCode to connect to the API",
-            "required": true
-        }
-    },
-    {
-        "key": "CompanyNumber",
-        "type": "input",
-        "defaultValue": "",
-        "templateOptions": {
-            "label": "CompanyNumber",
-            "description": "The CompanyNumber (BestuursNummer) to connect to the API",
-            "required": true
-        }
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "type": "input",
+    "key": "ClientSecret",
+    "templateOptions": {
+      "type": "password",
+      "label": "ClientSecret",
+      "required": true
     }
+  },
+  {
+    "defaultValue": "https://proxies-<environment>.rovictonline.nl/idp-proxy",
+    "key": "BaseUrl",
+    "templateOptions": {
+      "description": "The URL to the API.",
+      "label": "BaseUrl",
+      "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "https://sts-dev.rovictonline.nl/connect/token",
+    "key": "BaseUrlToken",
+    "templateOptions": {
+      "description": "The URL to get the bearer token.",
+      "label": "BaseUrlToken",
+      "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "key": "XVendorCode",
+    "templateOptions": {
+      "description": "The XVendorCode to connect to the API",
+      "label": "XVendorCode",
+      "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "key": "XVerificatieCode",
+    "templateOptions": {
+      "description": "The XVerificatieCode to connect to the API",
+      "label": "XVerificatieCode",
+      "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "key": "CompanyNumber",
+    "templateOptions": {
+      "description": "The CompanyNumber (BestuursNummer) to connect to the API",
+      "label": "CompanyNumber",
+      "required": true
+    },
+    "type": "input"
+  }
 ]
