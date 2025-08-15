@@ -361,14 +361,14 @@ try {
 
         if (-not $currentPermissions.ContainsKey($permission.Name)) {
             if (-not($actionContext.DryRun -eq $true)) {
-                # $enableDepartmentResponse = New-EsisEnableUserOnDepartment -Headers $headers -Body $body -Username $actionContext.References.Account
+                $enableDepartmentResponse = New-EsisEnableUserOnDepartment -Headers $headers -Body $body -Username $actionContext.References.Account
                 $splatEsisRequest = @{
                     CorrelationId     = $enableDepartmentResponse.correlationId
                     Headers           = $headers
                     MaxRetrycount     = $MaxRetrycount
                     RetryWaitDuration = $RetryWaitDuration
                 }
-                # $null = Get-EsisRequestResult @splatEsisRequest
+                $null = Get-EsisRequestResult @splatEsisRequest
             } else {
                 Write-Information "DryRun: Grant permission for [$($permission.Value.DisplayName)] with function [$($permission.Value.Function)]"
             }
@@ -382,14 +382,14 @@ try {
             (-not ($currentPermissions[$($permission.Name)].Function -eq $permission.Value.Function))
         ) {
             if (-not($actionContext.DryRun -eq $true)) {
-                # $enableDepartmentResponse = New-EsisEnableUserOnDepartment -Headers $headers -Body $body -Username $actionContext.References.Account
+                $enableDepartmentResponse = New-EsisEnableUserOnDepartment -Headers $headers -Body $body -Username $actionContext.References.Account
                 $splatEsisRequest = @{
                     CorrelationId     = $enableDepartmentResponse.correlationId
                     Headers           = $headers
                     MaxRetrycount     = $MaxRetrycount
                     RetryWaitDuration = $RetryWaitDuration
                 }
-                # $null = Get-EsisRequestResult @splatEsisRequest
+                $null = Get-EsisRequestResult @splatEsisRequest
             } else {
                 Write-Information "DryRun: Update permission [$($permission.Value.DisplayName)] with new function [$($permission.Value.Function)]"
             }
