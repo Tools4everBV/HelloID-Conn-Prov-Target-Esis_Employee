@@ -178,6 +178,16 @@ The employee account correlation is performed on `basispoortEmailadres` or `Emai
  $correlatedAccountEmployee = $users.GebruikersLijst.Medewerkers | Where-Object { $_.Emailadres -eq $correlationValue }
 ```
 
+#### Subpermissions
+A mapping is also used within the code flow for the subpermissions. This should be the default, but it may be changed based on customer requirements.
+ ```PowerShell
+$desiredPermissions[$contract.Department.ExternalId] = @{
+      DisplayName = $contract.Department.DisplayName
+      Function    = ''
+  }
+```
+
+
 #### Create/Update Body
 The Body to create or update the account is hardcoded in the script, to make sure only the right property are sent to the Webservice. Keep this in mind while adding fields to the fieldMapping.
 
