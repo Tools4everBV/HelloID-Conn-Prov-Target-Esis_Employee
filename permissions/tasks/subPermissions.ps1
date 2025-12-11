@@ -15,7 +15,7 @@ $mappingTableFunctions = @{
 }
 
 # This is used to locate the brin6 and function from the HelloID contract
-$brin6LookupKey = { $_.CostCenter.ExternalId }
+$brin6LookupKey = { $_.Custom.brin6 }
 $functionLookupKey = { $_.Title.ExternalId }
 
 # Enable TLS1.2
