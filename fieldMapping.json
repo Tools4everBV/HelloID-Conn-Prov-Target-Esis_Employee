@@ -2,144 +2,154 @@
   "Version": "v1",
   "MappingFields": [
     {
-      "Name": "GebruikersNaam",
-      "Description": "",
+      "Name": "wachtwoord",
+      "Description": "[Optional]\nExpected value: true\nNo actually generated password required. Esis generated the password itself and emails this to the specified email address of the user.\n\nOnly required when not using SSO.\nWhen using SSO, remove this field from the mapping.",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Create",
-            "Update"
+            "Create"
           ],
-          "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
+          "MappingMode": "Fixed",
+          "Value": "\"true\"",
           "UsedInNotifications": false,
           "StoreInAccountData": false
         }
       ]
     },
     {
-      "Name": "Roepnaam",
+      "Name": "tussenvoegsel",
       "Description": "",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Create",
-            "Update"
-          ],
-          "MappingMode": "Field",
-          "Value": "\"Person.Name.GivenName\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "Achternaam",
-      "Description": "",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Create",
-            "Update"
-          ],
-          "MappingMode": "Field",
-          "Value": "\"Person.Name.FamilyName\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "Tussenvoegsel",
-      "Description": "",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Create",
-            "Update"
+            "Create"
           ],
           "MappingMode": "Field",
           "Value": "\"Person.Name.FamilyNamePrefix\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Delete",
+            "Update"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
         }
       ]
     },
     {
-      "Name": "EmailAdres",
+      "Name": "ssoIdentifier",
+      "Description": "[Optional]\nOnly required when using SSO.\nWhen not using SSO, remove this field from the mapping.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"function getSsoIdentifier() {\\r\\n    let ssoIdentifier = Person.Accounts.MicrosoftActiveDirectory.userPrincipalName;\\r\\n\\r\\n    return ssoIdentifier;\\r\\n}\\r\\n\\r\\ngetSsoIdentifier();\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Delete",
+            "Update"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "preferredClaimType",
+      "Description": "[Optional]\nOnly required when using SSO.\nWhen not using SSO, remove this field from the mapping.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Fixed",
+          "Value": "\"upn\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Update",
+            "Delete"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "gebruikersnaam",
       "Description": "",
       "Type": "Text",
       "MappingActions": [
         {
           "MapForActions": [
-            "Create",
-            "Update"
-          ],
-          "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "SsoIdentifier",
-      "Description": "Required with SSO",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Create",
-            "Update"
-          ],
-          "MappingMode": "Complex",
-          "Value": "\"function getEmail() {\\r\\n    let mail = '';\\r\\n        if (typeof Person.Accounts.MicrosoftActiveDirectory.mail !== 'undefined' && Person.Accounts.MicrosoftActiveDirectory.mail) {\\r\\n            mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n        } return mail;\\r\\n    }\\r\\ngetEmail()\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-    {
-      "Name": "PreferredClaimType",
-      "Description": "Required with SSO",
-      "Type": "Text",
-      "MappingActions": [
-        {
-          "MapForActions": [
-            "Create",
-            "Update"
-          ],
-          "MappingMode": "Fixed",
-          "Value": "\"upn\"",
-          "UsedInNotifications": false,
-          "StoreInAccountData": false
-        }
-      ]
-    },
-
-    {
-      "Name": "Wachtwoord",
-      "Description": "Can be used when SSO is not implemented. (ESIS will generate and send the password to the user.)",
-      "Type": "Text",
-      "MappingActions": [
-        {
-           "MapForActions": [
             "Create"
           ],
-          "MappingMode": "Fixed",
-          "Value": "\"?\"",
+          "MappingMode": "Complex",
+          "Value": "\"\\r\\nfunction getUsername() {\\r\\n    let username = Person.Accounts.MicrosoftActiveDirectory.userPrincipalName;\\r\\n\\r\\n    return username;\\r\\n}\\r\\n\\r\\ngetUsername();\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Update",
+            "Delete"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
         }
       ]
     },
     {
-      "Name": "_extension.departmentBrin6",
-      "Description": "Not sure if required.",
+      "Name": "emailadres",
+      "Description": "",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create"
+          ],
+          "MappingMode": "Complex",
+          "Value": "\"function getEmail() {\\r\\n    let mail = Person.Accounts.MicrosoftActiveDirectory.mail;\\r\\n\\r\\n    return mail;\\r\\n}\\r\\n\\r\\ngetEmail();\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Delete",
+            "Update"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "achternaam",
+      "Description": "",
       "Type": "Text",
       "MappingActions": [
         {
@@ -147,9 +157,65 @@
             "Create"
           ],
           "MappingMode": "Field",
-          "Value": "\"Person.PrimaryContract.Department.ExternalId\"",
+          "Value": "\"Person.Name.FamilyName\"",
           "UsedInNotifications": false,
-          "StoreInAccountData": false
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Delete",
+            "Update"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "roepnaam",
+      "Description": "[Required] At Create, Update and Delete, sending an update without this field will result in an error.",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update",
+            "Delete"
+          ],
+          "MappingMode": "Field",
+          "Value": "\"Person.Name.NickName\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        }
+      ]
+    },
+    {
+      "Name": "personeelsnummer",
+      "Description": "",
+      "Type": "Text",
+      "MappingActions": [
+        {
+          "MapForActions": [
+            "Create",
+            "Update",
+            "Delete"
+          ],
+          "MappingMode": "Field",
+          "Value": "\"Person.ExternalId\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
+        },
+        {
+          "MapForActions": [
+            "Disable",
+            "Enable"
+          ],
+          "MappingMode": "None",
+          "Value": "\"\"",
+          "UsedInNotifications": false,
+          "StoreInAccountData": true
         }
       ]
     }
