@@ -190,9 +190,12 @@ function Get-EsisRequestResult {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/verzoekresultaat/$($correlationId)"
-            Method  = 'GET'
-            Headers = $Headers
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/verzoekresultaat/$($correlationId)"
+            Method      = 'GET'
+            Headers     = $Headers
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
 
         $retryCount = 1
@@ -238,10 +241,13 @@ function New-EsisDisableUserOnDepartment {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/deactiverenopvestiging"
-            Method  = 'POST'
-            Headers = $Headers
-            Body    = $Body
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/deactiverenopvestiging"
+            Method      = 'POST'
+            Headers     = $Headers
+            Body        = $Body
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
         $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response
@@ -264,10 +270,13 @@ function New-EsisEnableUserOnDepartment {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/activerenopvestiging"
-            Method  = 'POST'
-            Headers = $Headers
-            Body    = $Body
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/activerenopvestiging"
+            Method      = 'POST'
+            Headers     = $Headers
+            Body        = $Body
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
         $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response
