@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file. The format 
 ### Changed
 
 - Migrated from department-based permissions to task-based permissions approach
+- Renamed `permissions/tasks/` folder to `permissions/taakstellingen/` to better reflect Esis terminology
+- Updated employee correlation to use `basispoortEmailadres` field from Esis matched against `emailadres` from account data
 - Refactored `create.ps1` to include improved correlation logic and SSO identifier handling
 - Refactored `update.ps1` with enhanced change detection and SSO identifier management
 - Refactored `delete.ps1` with configurable account deletion and update-on-delete logic
@@ -38,6 +40,14 @@ All notable changes to this project will be documented in this file. The format 
 - Updated field mapping configuration to properly separate SSO and password-based authentication fields
 - Updated account reference from `EmailAdres` to `gebruikersNaam`
 - Updated documentation (readme.md) to reflect all changes including field mapping requirements, SSO configuration, and delete operation modes
+- Enhanced readme.md with detailed explanation of Esis terminology:
+  - **Aanstellingen** (appointments): Define employee function/role
+  - **Taakstellingen** (assignments): Define at which location (BRIN6) the function is performed
+  - **User vs Employee**: Clarified distinction between gebruiker (user account) and medewerker (employee record)
+- Added critical API limitation documentation: taakstellingen do NOT automatically translate to rollen (roles) - roles must be assigned manually
+- Documented that `roepnaam` is mandatory for all lifecycle actions and must be mapped with actual value
+- Documented that `bestuursnummer` is automatically added to all API requests from configuration
+- Clarified that connector is exclusively for employee accounts, not student accounts
 
 ### Fixed
 
@@ -48,6 +58,7 @@ All notable changes to this project will be documented in this file. The format 
 ### Removed
 
 - Removed original department-based permissions implementation in `permissions/department/subPermissions.ps1`
+- Removed `permissions/tasks/` folder (renamed to `permissions/taakstellingen/`)
 
 ## [1.0.0] - 04-08-2025
 
