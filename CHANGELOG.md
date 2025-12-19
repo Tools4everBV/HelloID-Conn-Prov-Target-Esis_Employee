@@ -2,12 +2,12 @@
 
 All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com), and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [2.0.0] - TBD
+## [2.0.0] - 2025-12-19
 
 ### Added
 
-- Added new task-based permissions system with `permissions/tasks/subPermissions.ps1`
-- Added new task-based permissions import script `permissions/tasks/subPermissionsImport.ps1`
+- Added new task-based permissions system with `permissions/taakstellingen/subPermissions.ps1`
+- Added new task-based permissions import script `permissions/taakstellingen/subPermissionsImport.ps1`
 - Added `ConvertTo-FlatObject` function to `update.ps1` and `delete.ps1` for improved data comparison
 - Added comprehensive error handling with `Resolve-Esis-EmployeeError` function across all scripts
 - Added SSO identifier linking and unlinking functionality in create, update, and delete operations
@@ -32,9 +32,9 @@ All notable changes to this project will be documented in this file. The format 
   - `update.ps1`
   - `delete.ps1`
   - `import.ps1`
-  - `permissions/tasks/subPermissions.ps1`
-  - `permissions/tasks/subPermissionsImport.ps1`
-- Updated `permissions/tasks/subPermissions.ps1` to use configurable scriptblock-based lookup keys (`$brin6LookupKey` and `$functionLookupKey`)
+  - `permissions/taakstellingen/subPermissions.ps1`
+  - `permissions/taakstellingen/subPermissionsImport.ps1`
+- Updated `permissions/taakstellingen/subPermissions.ps1` to use configurable scriptblock-based lookup keys (`$brin6LookupKey` and `$functionLookupKey`)
 - Changed `$brin6LookupKey` from `CostCenter.ExternalId` to `Custom.brin6` for more flexible BRIN code mapping
 - Changed default function mapping in permissions from 'Leraar' to 'Groepsleerkracht'
 - Updated field mapping configuration to properly separate SSO and password-based authentication fields
@@ -51,7 +51,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Fixed
 
-- Fixed null parameter exception in `permissions/tasks/subPermissions.ps1` when checking contract function values against empty mapping table by adding null/empty check before `ContainsKey()` call
+- Fixed null parameter exception in `permissions/taakstellingen/subPermissions.ps1` when checking contract function values against empty mapping table by adding null/empty check before `ContainsKey()` call
 - Fixed BRIN6 validation logic to properly validate minimum length of 6 characters
 - Improved handling of account reference validation across all lifecycle scripts
 
