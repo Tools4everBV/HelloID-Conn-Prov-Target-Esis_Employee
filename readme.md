@@ -33,7 +33,7 @@
     - [Update ARef](#update-aref)
     - [Additional Mapping](#additional-mapping)
     - [User vs Employee Account](#user-vs-employee-account)
-    - [HardcodedMapping](#hardcodedmapping)
+    - [Hardcoded Mapping](#hardcoded-mapping)
       - [Employee Correlation](#employee-correlation)
       - [Subpermissions (Taakstellingen)](#subpermissions-taakstellingen)
       - [Create/Update Body](#createupdate-body)
@@ -46,6 +46,9 @@
 ## Introduction
 
 _HelloID-Conn-Prov-Target-Esis-Employee_ is a _target_ connector. _Esis-Employee_ provides a set of REST API's that allow you to programmatically interact with its data.
+
+> [!NOTE]
+> This connector is specifically designed for **employee accounts** (medewerkers). While Esis also supports student accounts, this connector focuses exclusively on managing employee user accounts. The API creates a **gebruiker** (user account) and Esis automatically creates the corresponding **medewerker** (employee record).
 
 ## Supported features
 
@@ -109,7 +112,8 @@ The field mapping can be imported by using the _fieldMapping.json_ file.
 > - **wachtwoord**: Only map for Create when NOT using SSO. Set to `"true"` to have Esis generate and email a password to the user.
 > - **ssoIdentifier** and **preferredClaimType**: Only map for Create when using SSO. Remove these fields when not using SSO.
 > - **gebruikersnaam**: Only mapped for Create. The username becomes the account reference.
-> - **roepnaam**: Required for all actions (Create, Update, Delete). Updates without this field will result in an error.
+> - **roepnaam**: **MANDATORY** for all actions (Create, Update, Delete). Must be mapped with an actual value (not "None") and enabled for each lifecycle action. Requests without this field will fail.
+> - **bestuursnummer**: Not mapped in fieldMapping - automatically added by the connector from the configuration.
 
 ### Script Mapping
 Besides the configuration tab, you can also configure script variables.
@@ -191,15 +195,34 @@ The structure is:
 The connector creates permissions for each unique combination of BRIN6 and function from contracts in scope.
 
 ### User vs Employee Account
-**One-to-one relation**: Esis has both User and Employee accounts with a one-to-one relation. When a user account is created via the API, the Employee account is automatically created.
-**Existing Employee**: When the employee already exists (matched on email address), the user account will be linked to the existing employee account using the `medewerkerID`.
+
+> [!IMPORTANT]
+> Understanding the distinction between **user** (user account) and **employee** (employee record) is crucial for this connector.
+
+**Esis Account Structure**:
+- **User**: The login account used to access Esis. The API refers to this as "gebruiker" in all endpoints.
+- **Employee**: The employee record containing HR-related information (aanstellingen, taakstellingen).
+- Esis also supports **student accounts**, but this connector is **exclusively for employee accounts**.
+
+**One-to-one relation**: 
+- When this connector creates a **user account** via the API, Esis automatically creates the corresponding **employee record**.
+- Each user has exactly one linked employee.
+
+**Account Creation Flow**:
+1. Connector creates a user via the API
+2. Esis automatically creates the linked employee
+3. The user can then be assigned taakstellingen (location assignments)
+
+**Existing Employee**: 
+- When an employee record already exists (matched on `basispoortEmailadres`), the new user account will be linked to the existing employee record using the `medewerkerID`.
+- This prevents duplicate employee records in Esis.
 
 
-### HardcodedMapping
+### Hardcoded Mapping
 #### Employee Correlation
-The employee account correlation is performed on `Emailadres` field. This can be a different property than the user account correlation field, and this field cannot be managed in HelloID, so it's hardcoded in the create script. When this does not fit the customer, please change this in the code within the correlation code block.
+The employee account correlation is performed on the `basispoortEmailadres` field from Esis, matched against the `emailadres` from the account data. This can be a different property than the user account correlation field, and this field cannot be managed in HelloID, so it's hardcoded in the create script. When this does not fit the customer, please change this in the code within the correlation code block.
  ```PowerShell
- $correlatedAccountEmployee = $esisEmployees | Where-Object { $_.Emailadres -eq $correlationValue }
+ $correlatedAccountEmployee = $esisEmployees | Where-Object { $_.basispoortEmailadres -eq $actionContext.Data.emailadres }
 ```
 
 #### Subpermissions (Taakstellingen)
@@ -217,10 +240,12 @@ Each permission represents a **taakstelling** - the combination of a location (B
 
 
 #### Create/Update Body
-The body to create or update the account is hardcoded in the script to ensure only the correct properties are sent to the web service. Keep this in mind while adding fields to the fieldMapping.
+The connector sends all properties defined in the fieldMapping to the API, with one automatic addition:
 
-> [!IMPORTANT]
-> All `Invoke-RestMethod` calls use standardized error handling with `ContentType = 'application/json'`, `Verbose = $false`, and `ErrorAction = "Stop"` parameters for consistent behavior across all API operations.
+- **bestuursnummer** (company number): Automatically added to every request from `$actionContext.Configuration.CompanyNumber`. This is a required field for all API calls.
+- **roepnaam**: Must be present in the fieldMapping and enabled for each action (Create, Update, Delete). This is a required field that must come from the fieldMapping.
+
+All other fields are sent as configured in the fieldMapping.
 
 ## Development resources
 
