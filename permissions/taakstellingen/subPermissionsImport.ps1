@@ -4,8 +4,8 @@
 #################################################
 
 # Configure, must be the same as the values used in retreive permissions
-$permissionReference = 'Tasks'
-$permissionDisplayName = 'Tasks'
+$permissionReference = 'Taakstellingen'
+$permissionDisplayName = 'Taakstellingen'
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
