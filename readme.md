@@ -4,7 +4,7 @@
 > This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.
 
 <p align="center">
-  <img src="https://www.tools4ever.nl/connector-logos/rovictesis-logo.png">
+  <img src="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-Esis_Employee/blob/main/Logo.png">
 </p>
 
 ## Table of contents
@@ -12,7 +12,7 @@
 - [HelloID-Conn-Prov-Target-Esis-Employee](#helloid-conn-prov-target-esis-employee)
   - [Table of contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Supported  features](#supported--features)
+  - [Supported features](#supported-features)
   - [Getting started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Connection settings](#connection-settings)
@@ -24,6 +24,7 @@
   - [Remarks](#remarks)
     - [SSO or Not SSO](#sso-or-not-sso)
     - [Web service limitations](#web-service-limitations)
+      - [Taakstellingen vs Rollen](#taakstellingen-vs-rollen)
       - [SSO identifier](#sso-identifier)
       - [Get All](#get-all)
       - [Async](#async)
@@ -34,7 +35,7 @@
     - [User vs Employee Account](#user-vs-employee-account)
     - [HardcodedMapping](#hardcodedmapping)
       - [Employee Correlation](#employee-correlation)
-      - [Subpermissions](#subpermissions)
+      - [Subpermissions (Taakstellingen)](#subpermissions-taakstellingen)
       - [Create/Update Body](#createupdate-body)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
@@ -46,24 +47,27 @@
 
 _HelloID-Conn-Prov-Target-Esis-Employee_ is a _target_ connector. _Esis-Employee_ provides a set of REST API's that allow you to programmatically interact with its data.
 
-## Supported  features
+## Supported features
 
 The following features are available:
 
-| Feature                                   | Supported | Actions                     | Remarks                 |
-| ----------------------------------------- | --------- | --------------------------- | ----------------------- |
-| **Account Lifecycle**                     | ✅         | Create, Update, Link and unlink SsoIdentifier      |                         |
-| **Permissions**                           | ✅         | SubPermissions (All-in-One) | Dynamic                 |
-| **Resources**                             | ❌         | -                           |                         |
-| **Entitlement Import: Accounts**          | ✅         | -                           |                         |
-| **Entitlement Import: Permissions**       | ❌         | -                           | No retrieve possibility |
-| **Governance Reconciliation Resolutions** | ✅         | Accounts                    |                         |
+| Feature                                   | Supported | Actions                                       | Remarks |
+| ----------------------------------------- | --------- | --------------------------------------------- | ------- |
+| **Account Lifecycle**                     | ✅         | Create, Update, Link and unlink SsoIdentifier |         |
+| **Permissions**                           | ✅         | SubPermissions (All-in-One)                   | Dynamic |
+| **Resources**                             | ❌         | -                                             |         |
+| **Entitlement Import: Accounts**          | ✅         | -                                             |         |
+| **Entitlement Import: Permissions**       | ✅         | -                                             |         |
+| **Governance Reconciliation Resolutions** | ✅         | Accounts                                      |         |
 
 ## Getting started
 
 ### Prerequisites
-- A Brin6 code from HR or in HelloId is required to use the connector. Preferable in a Custom property or a code from HR.
-- A mapping available between HR function Title and Esis Role (Leraar, Director, etc..)
+- A BRIN6 code from HR or in HelloID is required to use the connector. Preferable in a Custom property or a code from HR.
+- A mapping available between HR function Title and Esis function (Groepsleerkracht, Director, Support, etc.)
+
+> [!NOTE]
+> In Esis, employees have **aanstellingen** (appointments) which define their function/role, and **taakstellingen** (assignments) which define at which location (BRIN6) they work. The connector manages these taakstellingen as permissions.
 
 ### Connection settings
 
@@ -141,6 +145,14 @@ The connector is designed to support both customers with and without SSO. This c
 - The properties `SsoIdentifier` and `PreferredClaimType` are used for SSO.
 
 ### Web service limitations
+
+#### Taakstellingen vs Rollen
+> [!WARNING]
+> The API can only manage **taakstellingen** (assignments of function to location). **Rollen** (roles) in Esis cannot be assigned via the API and must be managed manually by administrative staff.
+
+- The connector activates users on locations (vestigingen) with a function through taakstellingen
+- These taakstellingen do NOT automatically translate to roles in Esis
+
 #### SSO identifier
 The webservice does not support verifying if the SSO identifier is linked or not therefore it is not updated in the update script.
 
@@ -152,7 +164,7 @@ The webservice does not support verifying if the SSO identifier is linked or not
 
 
 ### Disable/Enable
-The disable and enable scripts are not used. The activation of users is managed with dynamic Permissions (task-based). This is because it's possible to activate persons in multiple brins. The activation is automatically calculated based on unique BRIN6 codes in contracts that are in scope.
+The disable and enable scripts are not used. The activation of users on locations is managed with dynamic Permissions (taakstellingen). This is because employees can have multiple taakstellingen across different BRIN6 locations. The activation is automatically calculated based on unique BRIN6 codes and functions from contracts that are in scope.
 
 ### Delete
 The delete script supports two modes of operation, controlled by configuration settings:
@@ -170,7 +182,13 @@ if ($actionContext.Data.gebruikersNaam -ne $actionContext.References.Account) {
 ```
 
 ### Additional Mapping
-Activation on a department requires a function role. The mapping for the function roles can be configured in the permissions script using the `$mappingTableFunctions` hashtable. If no mapping is found for a contract's function value, the `$defaultFunction` ('Groepsleerkracht') will be used. (See [subPermissions.ps1](#subpermissionsps1))
+Activation on a location (vestiging) requires a function role from the aanstelling. The mapping for the function roles can be configured in the permissions script using the `$mappingTableFunctions` hashtable. If no mapping is found for a contract's function value, the `$defaultFunction` ('Groepsleerkracht') will be used. (See [subPermissions.ps1](#subpermissionsps1))
+
+The structure is:
+- **Aanstelling** (appointment): Defines the function/role (e.g., Groepsleerkracht, Director)
+- **Taakstelling** (assignment): Defines at which location (BRIN6) this function is performed
+
+The connector creates permissions for each unique combination of BRIN6 and function from contracts in scope.
 
 ### User vs Employee Account
 **One-to-one relation**: Esis has both User and Employee accounts with a one-to-one relation. When a user account is created via the API, the Employee account is automatically created.
@@ -184,15 +202,18 @@ The employee account correlation is performed on `Emailadres` field. This can be
  $correlatedAccountEmployee = $esisEmployees | Where-Object { $_.Emailadres -eq $correlationValue }
 ```
 
-#### Subpermissions
+#### Subpermissions (Taakstellingen)
 The BRIN6 code and function mapping is configured through scriptblock-based lookup keys in the subPermissions script. This should be the default, but it may be changed based on customer requirements.
  ```PowerShell
 $brin6LookupKey = { $_.Custom.brin6 }
 $functionLookupKey = { $_.Title.ExternalId }
 
-# Permission structure
+# Permission structure: "BRIN6~Function"
+# Example: "12AB34~Groepsleerkracht" represents a taakstelling
 $desiredPermissions["$($brin6)~$($function)"] = "$($brin6)~$($function)"
 ```
+
+Each permission represents a **taakstelling** - the combination of a location (BRIN6) and a function from the aanstelling.
 
 
 #### Create/Update Body
@@ -207,15 +228,15 @@ The body to create or update the account is hardcoded in the script to ensure on
 
 The following endpoints are used by the connector
 
-| Endpoint                                                               | Description                            |
-| ---------------------------------------------------------------------- | -------------------------------------- |
-| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijstverzoek         | Retrieve user information Request      |
-| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijst/:correlationId | Retrieve user information Result       |
-| /v1/api/bestuur/:companyNumber/verzoekresultaat/:correlationId         | Retrieve action Result                 |
-| /v1/api/bestuur/gebruiker/:username/koppelenssoidentifier              | Link User to SsoIdentifier Request     |
-| /v1/api/bestuur/gebruiker/:username/ontkoppelenssoidentifier           | UnLink User from SsoIdentifier Request |
-| /v1/api/bestuur/gebruiker/:username/activerenopvestiging               | Enable user on Department Request      |
-| /v1/api/bestuur/gebruiker/:username/deactiverenopvestiging             | Disable user from Department Request   |
+| Endpoint                                                               | Description                                  |
+| ---------------------------------------------------------------------- | -------------------------------------------- |
+| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijstverzoek         | Retrieve user information Request            |
+| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijst/:correlationId | Retrieve user information Result             |
+| /v1/api/bestuur/:companyNumber/verzoekresultaat/:correlationId         | Retrieve action Result                       |
+| /v1/api/gebruiker/:username/koppelenssoidentifier                      | Link User to SsoIdentifier Request           |
+| /v1/api/gebruiker/:username/ontkoppelenssoidentifier                   | UnLink User from SsoIdentifier Request       |
+| /v1/api/gebruiker/:username/activerenopvestiging                       | Activate user on location (taakstelling)     |
+| /v1/api/gebruiker/:username/deactiverenopvestiging                     | Deactivate user from location (taakstelling) |
 
 ### API documentation
 [API Swagger Documentation](https://proxies-dev.rovictonline.nl/idp-proxy/index.html)
