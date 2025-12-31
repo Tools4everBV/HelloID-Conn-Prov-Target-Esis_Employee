@@ -65,7 +65,7 @@ The following features are available:
 
 ## Getting started
 
-### Prerequisites
+### Requirements
 - A BRIN6 code from HR or in HelloID is required to use the connector. Preferable in a Custom property or a code from HR.
 - A mapping available between HR function Title and Esis function (Groepsleerkracht, Director, Support, etc.)
 
