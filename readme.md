@@ -4,7 +4,7 @@
 > This repository contains the connector and configuration code only. The implementer is responsible to acquire the connection details such as username, password, certificate, etc. You might even need to sign a contract or agreement with the supplier before implementing this connector. Please contact the client's application manager to coordinate the connector requirements.
 
 <p align="center">
-  <img src="https://www.tools4ever.nl/connector-logos/rovictesis-logo.png">
+  <img src="https://github.com/Tools4everBV/HelloID-Conn-Prov-Target-Esis_Employee/blob/main/Logo.png">
 </p>
 
 ## Table of contents
@@ -12,7 +12,7 @@
 - [HelloID-Conn-Prov-Target-Esis-Employee](#helloid-conn-prov-target-esis-employee)
   - [Table of contents](#table-of-contents)
   - [Introduction](#introduction)
-  - [Supported  features](#supported--features)
+  - [Supported features](#supported-features)
   - [Getting started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [Connection settings](#connection-settings)
@@ -24,15 +24,18 @@
   - [Remarks](#remarks)
     - [SSO or Not SSO](#sso-or-not-sso)
     - [Web service limitations](#web-service-limitations)
+      - [Taakstellingen vs Rollen](#taakstellingen-vs-rollen)
       - [SSO identifier](#sso-identifier)
       - [Get All](#get-all)
       - [Async](#async)
     - [Disable/Enable](#disableenable)
+    - [Delete](#delete)
     - [Update ARef](#update-aref)
     - [Additional Mapping](#additional-mapping)
     - [User vs Employee Account](#user-vs-employee-account)
-    - [HardcodedMapping](#hardcodedmapping)
+    - [Hardcoded Mapping](#hardcoded-mapping)
       - [Employee Correlation](#employee-correlation)
+      - [Subpermissions (Taakstellingen)](#subpermissions-taakstellingen)
       - [Create/Update Body](#createupdate-body)
   - [Development resources](#development-resources)
     - [API endpoints](#api-endpoints)
@@ -44,24 +47,30 @@
 
 _HelloID-Conn-Prov-Target-Esis-Employee_ is a _target_ connector. _Esis-Employee_ provides a set of REST API's that allow you to programmatically interact with its data.
 
-## Supported  features
+> [!NOTE]
+> This connector is specifically designed for **employee accounts** (medewerkers). While Esis also supports student accounts, this connector focuses exclusively on managing employee user accounts. The API creates a **gebruiker** (user account) and Esis automatically creates the corresponding **medewerker** (employee record).
+
+## Supported features
 
 The following features are available:
 
-| Feature                                   | Supported | Actions                     | Remarks                 |
-| ----------------------------------------- | --------- | --------------------------- | ----------------------- |
-| **Account Lifecycle**                     | ✅         | Create, Update, Link and unlink SsoIdentifier      |                         |
-| **Permissions**                           | ✅         | SubPermissions (All-in-One) | Dynamic                 |
-| **Resources**                             | ❌         | -                           |                         |
-| **Entitlement Import: Accounts**          | ✅         | -                           |                         |
-| **Entitlement Import: Permissions**       | ❌         | -                           | No retrieve possibility |
-| **Governance Reconciliation Resolutions** | ✅         | Accounts                    |                         |
+| Feature                                   | Supported | Actions                                       | Remarks |
+| ----------------------------------------- | --------- | --------------------------------------------- | ------- |
+| **Account Lifecycle**                     | ✅         | Create, Update, Link and unlink SsoIdentifier |         |
+| **Permissions**                           | ✅         | SubPermissions (All-in-One)                   | Dynamic |
+| **Resources**                             | ❌         | -                                             |         |
+| **Entitlement Import: Accounts**          | ✅         | -                                             |         |
+| **Entitlement Import: Permissions**       | ✅         | -                                             |         |
+| **Governance Reconciliation Resolutions** | ✅         | Accounts                                      |         |
 
 ## Getting started
 
-### Prerequisites
-- A Brin6 code from HR or in HelloId is required to use the connector. Preferable in a Custom property or a code from HR.
-- A mapping available between HR function Title and Esis Role (Leraar, Director, etc..)
+### Requirements
+- A BRIN6 code from HR or in HelloID is required to use the connector. Preferable in a Custom property or a code from HR.
+- A mapping available between HR function Title and Esis function (Groepsleerkracht, Director, Support, etc.)
+
+> [!NOTE]
+> In Esis, employees have **aanstellingen** (appointments) which define their function/role, and **taakstellingen** (assignments) which define at which location (BRIN6) they work. The connector manages these taakstellingen as permissions.
 
 ### Connection settings
 
@@ -98,6 +107,14 @@ The correlation configuration is used to specify which properties will be used t
 
 The field mapping can be imported by using the _fieldMapping.json_ file.
 
+> [!IMPORTANT]
+> The following fields have specific mapping requirements:
+> - **wachtwoord**: Only map for Create when NOT using SSO. Set to `"true"` to have Esis generate and email a password to the user.
+> - **ssoIdentifier** and **preferredClaimType**: Only map for Create when using SSO. Remove these fields when not using SSO.
+> - **gebruikersnaam**: Only mapped for Create. The username becomes the account reference.
+> - **roepnaam**: **MANDATORY** for all actions (Create, Update, Delete). Must be mapped with an actual value (not "None") and enabled for each lifecycle action. Requests without this field will fail.
+> - **bestuursnummer**: Not mapped in fieldMapping - automatically added by the connector from the configuration.
+
 ### Script Mapping
 Besides the configuration tab, you can also configure script variables.
 
@@ -105,41 +122,41 @@ Besides the configuration tab, you can also configure script variables.
 
   ```PowerShell
 # Function Mapping for when no mapping is found
-$defaultFunction = 'Leraar'
+$defaultFunction = 'Groepsleerkracht'
 
-# This is used to locate the department and function from the HelloID contract
-$mappingHashTableFunctions = @{
+# This is used to map the function name from the HelloID contract to the Esis function name for the Department assignment
+$mappingTableFunctions = @{
     MEDSBI  = 'Director'
     MEDSBI2 = 'Director'
     MEDSBI3 = 'Support'
 }
 
-#Script Configuration
-$brin6LookupKey = { $_.Department.ExternalId }
+# This is used to locate the brin6 and function from the HelloID contract
+$brin6LookupKey = { $_.Custom.brin6 }
 $functionLookupKey = { $_.Title.ExternalId }
-
-# Primary Contract Calculation foreach employment
-$firstProperty = @{ Expression = { $_.Details.Fte } ; Descending = $true }
-$secondProperty = @{ Expression = { $_.Details.HoursPerWeek }; Descending = $false }
-
-# Priority Calculation Order (High priority -> Low priority)
-$splatSortObject = @{
-    Property = @(
-        $firstProperty,
-        $secondProperty)
-}
   ```
 
+> [!NOTE]
+> The `$brin6LookupKey` uses `Custom.brin6` by default. The script will validate that the BRIN code is at least 6 characters long.
+
 ### Account Reference
-The account reference is populated with the property `EmailAdres` property from _Esis-Employee_
+The account reference is populated with the `gebruikersNaam` property from _Esis-Employee_
 
 ## Remarks
 ### SSO or Not SSO
 The connector is designed to support both customers with and without SSO. This can be managed in the field mapping by adding or removing specific properties — they cannot be mapped together.
-- The `Password` property triggers Esis to generate and send a password to the user's email address during account creation.
+- The `Password` property triggers Esis to generate and send a password to the user's email address during account creation. Set the value to `"true"` to have Esis generate and email a password to the user.
 - The properties `SsoIdentifier` and `PreferredClaimType` are used for SSO.
 
 ### Web service limitations
+
+#### Taakstellingen vs Rollen
+> [!WARNING]
+> The API can only manage **taakstellingen** (assignments of function to location). **Rollen** (roles) in Esis cannot be assigned via the API and must be managed manually by administrative staff.
+
+- The connector activates users on locations (vestigingen) with a function through taakstellingen
+- These taakstellingen do NOT automatically translate to roles in Esis
+
 #### SSO identifier
 The webservice does not support verifying if the SSO identifier is linked or not therefore it is not updated in the update script.
 
@@ -151,45 +168,84 @@ The webservice does not support verifying if the SSO identifier is linked or not
 
 
 ### Disable/Enable
-The disable and enable scripts are not used. And the activation of the department is managed with dynamic Permissions. This is because it's possible to activate persons in multiple departments. The activation is automatically calculated based on unique brin6 in contracts in scope.
+The disable and enable scripts are not used. The activation of users on locations is managed with dynamic Permissions (taakstellingen). This is because employees can have multiple taakstellingen across different BRIN6 locations. The activation is automatically calculated based on unique BRIN6 codes and functions from contracts that are in scope.
 
+### Delete
+The delete script supports two modes of operation, controlled by configuration settings:
+- **Account Deletion**: If `deleteAccount` is enabled, the account will be permanently deleted
+- **Update on Delete**: If `deleteAccount` is disabled, the account can be updated with specific field values (e.g., setting certain properties)
+- **SSO Unlinking**: If `unlinkSsoIdentifierOnDelete` is enabled, the SSO identifier will be unlinked. This is only possible when not deleting the account (`deleteAccount` is disabled)
 
 ### Update ARef
-The API does not return a account Identifier, so the `emailAdres` is used as Account reference, so when this reference is required to update, this should be implemented in the Update script, like:
+The API does not return an account identifier, so the `gebruikersNaam` is used as the account reference. When this reference needs to be updated, it should be implemented in the update script, like:
 ```Powershell
-if ($actionContext.Data.EmailAdres -ne $actionContext.PreviousData.EmailAdres) {
-    $outputContext.AccountReference = $actionContext.Data.EmailAdres
+if ($actionContext.Data.gebruikersNaam -ne $actionContext.References.Account) {
+    $outputContext.AccountReference = $actionContext.Data.gebruikersNaam
     Write-Information "AccountReference is updated to: [$($outputContext.AccountReference)]"
 }
 ```
 
 ### Additional Mapping
-Activation on a department also requires a Function Role. The mapping for the function roles can be configured in the grant script. (See [subPermissions.ps1](#subpermissionsps1))
+Activation on a location (vestiging) requires a function role from the aanstelling. The mapping for the function roles can be configured in the permissions script using the `$mappingTableFunctions` hashtable. If no mapping is found for a contract's function value, the `$defaultFunction` ('Groepsleerkracht') will be used. (See [subPermissions.ps1](#subpermissionsps1))
+
+The structure is:
+- **Aanstelling** (appointment): Defines the function/role (e.g., Groepsleerkracht, Director)
+- **Taakstelling** (assignment): Defines at which location (BRIN6) this function is performed
+
+The connector creates permissions for each unique combination of BRIN6 and function from contracts in scope.
 
 ### User vs Employee Account
-**One on one relation**: Esis does have User and Employee Account, with a one on one relation. When a user account is created via the API the Employee account is automatic created.
-**Existing Employee**: When the employee already exists the account will be created for the existing employee.
+
+> [!IMPORTANT]
+> Understanding the distinction between **user** (user account) and **employee** (employee record) is crucial for this connector.
+
+**Esis Account Structure**:
+- **User**: The login account used to access Esis. The API refers to this as "gebruiker" in all endpoints.
+- **Employee**: The employee record containing HR-related information (aanstellingen, taakstellingen).
+- Esis also supports **student accounts**, but this connector is **exclusively for employee accounts**.
+
+**One-to-one relation**: 
+- When this connector creates a **user account** via the API, Esis automatically creates the corresponding **employee record**.
+- Each user has exactly one linked employee.
+
+**Account Creation Flow**:
+1. Connector creates a user via the API
+2. Esis automatically creates the linked employee
+3. The user can then be assigned taakstellingen (location assignments)
+
+**Existing Employee**: 
+- When an employee record already exists (matched on `basispoortEmailadres`), the new user account will be linked to the existing employee record using the `medewerkerID`.
+- This prevents duplicate employee records in Esis.
 
 
-### HardcodedMapping
+### Hardcoded Mapping
 #### Employee Correlation
-The employee account correlation is performed on `basispoortEmailadres` or `Emailadres` this can be a different property than the user account, and this field cannot be managed in HelloID so it's hardcoded in the create script. When this does not fit the customer please change this in the code within the correlation code block.
+The employee account correlation is performed on the `basispoortEmailadres` field from Esis, matched against the `emailadres` from the account data. This can be a different property than the user account correlation field, and this field cannot be managed in HelloID, so it's hardcoded in the create script. When this does not fit the customer, please change this in the code within the correlation code block.
  ```PowerShell
- $correlatedAccountEmployee = $users.GebruikersLijst.Medewerkers | Where-Object { $_.Emailadres -eq $correlationValue }
+ $correlatedAccountEmployee = $esisEmployees | Where-Object { $_.basispoortEmailadres -eq $actionContext.Data.emailadres }
 ```
 
-#### Subpermissions
-A mapping is also used within the code flow for the subpermissions. This should be the default, but it may be changed based on customer requirements.
+#### Subpermissions (Taakstellingen)
+The BRIN6 code and function mapping is configured through scriptblock-based lookup keys in the subPermissions script. This should be the default, but it may be changed based on customer requirements.
  ```PowerShell
-$desiredPermissions[$contract.Department.ExternalId] = @{
-      DisplayName = $contract.Department.DisplayName
-      Function    = ''
-  }
+$brin6LookupKey = { $_.Custom.brin6 }
+$functionLookupKey = { $_.Title.ExternalId }
+
+# Permission structure: "BRIN6~Function"
+# Example: "12AB34~Groepsleerkracht" represents a taakstelling
+$desiredPermissions["$($brin6)~$($function)"] = "$($brin6)~$($function)"
 ```
+
+Each permission represents a **taakstelling** - the combination of a location (BRIN6) and a function from the aanstelling.
 
 
 #### Create/Update Body
-The Body to create or update the account is hardcoded in the script, to make sure only the right property are sent to the Webservice. Keep this in mind while adding fields to the fieldMapping.
+The connector sends all properties defined in the fieldMapping to the API, with one automatic addition:
+
+- **bestuursnummer** (company number): Automatically added to every request from `$actionContext.Configuration.CompanyNumber`. This is a required field for all API calls.
+- **roepnaam**: Must be present in the fieldMapping and enabled for each action (Create, Update, Delete). This is a required field that must come from the fieldMapping.
+
+All other fields are sent as configured in the fieldMapping.
 
 ## Development resources
 
@@ -197,15 +253,15 @@ The Body to create or update the account is hardcoded in the script, to make sur
 
 The following endpoints are used by the connector
 
-| Endpoint                                                               | Description                            |
-| ---------------------------------------------------------------------- | -------------------------------------- |
-| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijstverzoek         | Retrieve user information Request      |
-| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijst/:correlationId | Retrieve user information Result       |
-| /v1/api/bestuur/:companyNumber/verzoekresultaat/:correlationId         | Retrieve action Result                 |
-| /v1/api/bestuur/gebruiker/:username/koppelenssoidentifier              | Link User to SsoIdentifier Request     |
-| /v1/api/bestuur/gebruiker/:username/ontkoppelenssoidentifier           | UnLink User from SsoIdentifier Request |
-| /v1/api/bestuur/gebruiker/:username/activerenopvestiging               | Enable user on Department Request      |
-| /v1/api/bestuur/gebruiker/:username/deactiverenopvestiging             | Disable user from Department Request   |
+| Endpoint                                                               | Description                                  |
+| ---------------------------------------------------------------------- | -------------------------------------------- |
+| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijstverzoek         | Retrieve user information Request            |
+| /v1/api/bestuur/:companyNumber/gebruikermedewerkerlijst/:correlationId | Retrieve user information Result             |
+| /v1/api/bestuur/:companyNumber/verzoekresultaat/:correlationId         | Retrieve action Result                       |
+| /v1/api/gebruiker/:username/koppelenssoidentifier                      | Link User to SsoIdentifier Request           |
+| /v1/api/gebruiker/:username/ontkoppelenssoidentifier                   | UnLink User from SsoIdentifier Request       |
+| /v1/api/gebruiker/:username/activerenopvestiging                       | Activate user on location (taakstelling)     |
+| /v1/api/gebruiker/:username/deactiverenopvestiging                     | Deactivate user from location (taakstelling) |
 
 ### API documentation
 [API Swagger Documentation](https://proxies-dev.rovictonline.nl/idp-proxy/index.html)

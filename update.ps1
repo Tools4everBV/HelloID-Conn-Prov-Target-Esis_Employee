@@ -7,6 +7,30 @@
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
 
 #region functions
+function ConvertTo-FlatObject {
+    param (
+        [Parameter(Mandatory = $true)]
+        [pscustomobject] $Object,
+        [string] $Prefix = ""
+    )
+    $result = [ordered]@{}
+
+    foreach ($property in $Object.PSObject.Properties) {
+        $name = if ($Prefix) { "$Prefix`.$($property.Name)" } else { $property.Name }
+
+        if ($property.Value -is [pscustomobject]) {
+            $flattenedSubObject = ConvertTo-FlatObject -Object $property.Value -Prefix $name
+            foreach ($subProperty in $flattenedSubObject.PSObject.Properties) {
+                $result[$subProperty.Name] = [string]$subProperty.Value
+            }
+        }
+        else {
+            $result[$name] = [string]$property.Value
+        }
+    }
+    Write-Output ([PSCustomObject]$result)
+}
+
 function Resolve-Esis-EmployeeError {
     [CmdletBinding()]
     param (
@@ -23,7 +47,8 @@ function Resolve-Esis-EmployeeError {
         }
         if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {
             $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message
-        } elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
+        }
+        elseif ($ErrorObject.Exception.GetType().FullName -eq 'System.Net.WebException') {
             if ($null -ne $ErrorObject.Exception.Response) {
                 $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()
                 if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {
@@ -35,13 +60,16 @@ function Resolve-Esis-EmployeeError {
             $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json)
             if ($null -ne $errorDetailsObject.error) {
                 $httpErrorObj.FriendlyMessage = $errorDetailsObject.error
-            } elseif ($null -ne $errorDetailsObject.errors.Brin6) {
+            }
+            elseif ($null -ne $errorDetailsObject.errors.Brin6) {
                 $httpErrorObj.FriendlyMessage = $errorDetailsObject.errors.Brin6 -join ', '
-            } else {
+            }
+            else {
                 $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails
             }
 
-        } catch {
+        }
+        catch {
             $httpErrorObj.FriendlyMessage = "Error: [$($httpErrorObj.ErrorDetails)] [$($_.Exception.Message)]"
         }
         Write-Output $httpErrorObj
@@ -66,7 +94,8 @@ function Get-EsisAccessToken {
 
             $response = Invoke-RestMethod $actionContext.Configuration.BaseUrlToken -Method 'POST' -Headers $headers -Body $body
             Write-Output $response.access_token
-        } catch {
+        }
+        catch {
             $PSCmdlet.ThrowTerminatingError($_)
         }
     }
@@ -93,9 +122,12 @@ function Get-EsisRequestResult {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/verzoekresultaat/$($correlationId)"
-            Method  = 'GET'
-            Headers = $Headers
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/verzoekresultaat/$($correlationId)"
+            Method      = 'GET'
+            Headers     = $Headers
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
 
         $retryCount = 1
@@ -114,12 +146,13 @@ function Get-EsisRequestResult {
             if ($response.isProcessed -eq $true -and $response.isSuccessful -eq $true) {
                 Write-Information "Job completed, Message [$($response.message)], action [$($response.action)]"
                 return $response
-            } else {
+            }
+            else {
                 throw "Could not get success confirmation, Error $($response.message), action $($response.action)"
             }
         }  while ($true)
-    } catch {
-        Write-Warning "$($splatRestRequest.Uri)"
+    }
+    catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -132,13 +165,17 @@ function Get-EsisUserEmployeeRequest {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijstverzoek/"
-            Method  = "GET"
-            Headers = $Headers
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijstverzoek/"
+            Method      = "GET"
+            Headers     = $Headers
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
         $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response.correlationId
-    } catch {
+    }
+    catch {
         Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
@@ -164,9 +201,12 @@ function Get-EsisUserAndEmployeeList {
     )
     try {
         $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijst/$($correlationId)"
-            Method  = 'GET'
-            Headers = $Headers
+            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijst/$($correlationId)"
+            Method      = 'GET'
+            Headers     = $Headers
+            ContentType = 'application/json'
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
         $retryCount = 1
         Start-Sleep 1
@@ -174,75 +214,24 @@ function Get-EsisUserAndEmployeeList {
             try {
                 $response = Invoke-RestMethod @splatRestRequest
                 if ($response.isProcessed -eq $false) {
-                    throw "Could not get result, Error $($response.message), action $($response.action)"
+                    throw "Could not get result. Error $($response.message), action $($response.action)"
                 }
-                Write-Information 'Job completed, get user employee list'
                 return $response
-            } catch {
+            }
+            catch {
                 if ($retryCount -gt $MaxRetryCount) {
                     throw "Could not retrieve response after $($MaxRetryCount) retries. isProcessed: $($response.isProcessed), isSuccessful: $($response.isSuccessful)"
-                } else {
-                    Write-Information "Could not send Information retrying in $($RetryWaitDuration) seconds..."
+                }
+                else {
+                    Write-Information "Could not send Information retrying in $($RetryWaitDuration) seconds"
                     Start-Sleep -Seconds $RetryWaitDuration
                     $retryCount = $retryCount + 1
                 }
             }
         }
         while ($true)
-    } catch {
-        $PSCmdlet.ThrowTerminatingError($_)
     }
-}
-
-function Set-EsisUser {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [object]$Headers,
-
-        [Parameter(Mandatory)]
-        [object]$Body,
-
-        [Parameter(Mandatory)]
-        [string]$Username
-    )
-    try {
-        $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($username)"
-            Method  = 'PATCH'
-            Headers = $Headers
-            Body    = ($Body | ConvertTo-Json)
-        }
-        $response = Invoke-RestMethod @splatRestRequest
-
-        Write-Output $response
-    } catch {
-        $PSCmdlet.ThrowTerminatingError($_)
-    }
-}
-
-function New-EsisLinkUserToSsoIdentifier {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [object]$Headers,
-
-        [Parameter(Mandatory)]
-        [object]$Body,
-
-        [Parameter(Mandatory)]
-        [string]$Username
-    )
-    try {
-        $splatRestRequest = @{
-            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($Username)/koppelenssoidentifier"
-            Method  = 'POST'
-            Headers = $Headers
-            Body    = $Body
-        }
-        $response = Invoke-RestMethod @splatRestRequest
-        Write-Output $response
-    } catch {
+    catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -254,40 +243,61 @@ try {
         throw 'The account reference could not be found'
     }
 
+    $actionMessage = 'creating access token'
     $accessToken = Get-EsisAccessToken
     $headers = @{
         'X-VendorCode'      = $actionContext.Configuration.XVendorCode
         'X-VerificatieCode' = $actionContext.Configuration.XVerificatieCode
         Accept              = 'application/json'
-        # Vestiging           = $actionContext.Data._extension.departmentBrin6
         Authorization       = "Bearer $($accessToken)"
         'Content-Type'      = 'application/json'
     }
 
+    $actionMessage = 'querying account'
+    $correlationField = "gebruikersnaam"
+    $correlationValue = $actionContext.References.Account
 
-    Write-Information 'Verifying if a Esis-Employee account exists'
     $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
-    $users = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers
-    $correlatedAccount = $users.gebruikersLijst.gebruikers | Where-Object { $_.Emailadres -eq $actionContext.References.Account }
-    $outputContext.PreviousData = $correlatedAccount
+    $esisUserAndEmployeeList = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers
+    $esisUsers = $esisUserAndEmployeeList.gebruikerLijst.gebruikers
+        
+    $correlatedAccount = $esisUsers | Where-Object { $_.$correlationField -eq $correlationValue }
 
+    # Set PreviousData with data of correlated account
+    $outputContext.PreviousData = $correlatedAccount | Select-Object $outputContext.Data.PsObject.Properties.Name
+    # As there is no GET call available for the SSO identifier, we set the previous data with the current data to avoid unwanted update notifications
+    if ($actionContext.Data.SsoIdentifier) {
+        $outputContext.PreviousData | Add-Member @{
+            PreferredClaimType = $actionContext.Data.PreferredClaimType
+            SsoIdentifier      = $actionContext.Data.SsoIdentifier
+        } -Force
+    }    
+
+
+    # Determine actions
+    $actionMessage = 'determining actions'
     $actionList = [System.Collections.Generic.List[string]]::new()
     if (-not $correlatedAccount) {
         $actionList.Add('NotFound')
-    } elseif ($correlatedAccount.Count -gt 1) {
-        throw "Multiple accounts found for person where [Emailadres] is: [$($actionContext.References.Account)]"
-    } elseif ($correlatedAccount) {
-        if ($actionContext.AccountCorrelated) {
+    }
+    elseif ($correlatedAccount.Count -gt 1) {
+        throw "Multiple accounts found where $correlationField is: [$correlationValue]"
+    }
+    elseif ($correlatedAccount) {
+        # As there is no GET call available for the SSO identifier, we can only set this on correlate
+        if ($actionContext.AccountCorrelated -and $null -ne $actionContext.Data.ssoIdentifier -and $null -ne $actionContext.Data.preferredClaimType) {
             $actionList.Add('LinkUserToSsoIdentifier')
         }
+        
         $splatCompareProperties = @{
-            ReferenceObject  = @($correlatedAccount.PSObject.Properties)
+            ReferenceObject  = @((ConvertTo-FlatObject -Object $correlatedAccount).PSObject.Properties)
             DifferenceObject = @(($actionContext.Data | Select-Object * -ExcludeProperty _extension, PreferredClaimType, SsoIdentifier).PSObject.Properties)
         }
         $propertiesChanged = Compare-Object @splatCompareProperties -PassThru | Where-Object { $_.SideIndicator -eq '=>' }
         if ($propertiesChanged) {
             $actionList.Add('UpdateAccount')
-        } else {
+        }
+        else {
             $actionList.Add('NoChanges')
         }
     }
@@ -296,129 +306,167 @@ try {
     foreach ($action in $actionList) {
         switch ($action) {
             'UpdateAccount' {
-                Write-Information "Account property(s) required to update: $($propertiesChanged.Name -join ', ')"
-                $body = [PSCustomObject]@{
-                    gebruikersNaam = "$($actionContext.Data.GebruikersNaam)"
-                    achternaam     = "$($actionContext.Data.Achternaam)"
-                    roepnaam       = "$($actionContext.Data.Roepnaam)"
-                    tussenvoegsel  = "$($actionContext.Data.Tussenvoegsel)"
-                    emailAdres     = "$($actionContext.Data.EmailAdres)"
-                }
+                $actionMessage = "updating account with accountReference: [$($actionContext.References.Account)]. Properties changed: $($propertiesChanged.Name -join ', ')"
 
-                # Remove properties that are not in the actionContext.Data
-                foreach ($property in $body.PSObject.Properties) {
-                    if ($property.name -notin $actionContext.Data.PSObject.Properties.name) {
-                        $body.PSObject.Properties.Remove($property.name)
+                # Set Data with current data from correlated account, then merge with actionContext.Data
+                $outputContext.Data = $correlatedAccount.PSObject.Copy()
+                
+                # Update/append fields from actionContext.Data into PreviousData
+                foreach ($property in $actionContext.Data.PSObject.Properties) {
+                    if ($outputContext.Data.PSObject.Properties.Name -contains $property.Name) {
+                        # Update existing property
+                        $outputContext.Data.$($property.Name) = $property.Value
+                    }
+                    else {
+                        # Append new property
+                        $outputContext.Data | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value -Force
                     }
                 }
+
+                $body = $actionContext.Data
+
+                # Add required property BestuursNummer
                 $body | Add-Member @{
                     bestuursnummer = $actionContext.Configuration.CompanyNumber
                 } -Force
 
-                if (-not($actionContext.DryRun -eq $true)) {
-                    Write-Information "Updating Esis-Employee account with accountReference: [$($actionContext.References.Account)]"
-                    $null = Set-EsisUser -Headers $headers -Body $body -Username $actionContext.References.Account
-                } else {
-                    Write-Information "[DryRun] Update Esis-Employee account with accountReference: [$($actionContext.References.Account)], will be executed during enforcement"
+                $splatUpdateAccount = @{
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($actionContext.References.Account)"
+                    Method      = 'PATCH'
+                    Headers     = $headers
+                    Body        = ($body | ConvertTo-Json)
+                    ContentType = 'application/json'
+                    Verbose     = $false
+                    ErrorAction = "Stop"
                 }
-                $outputContext.Data = $outputContext.Data | Select-Object * -ExcludeProperty _extension
-                $outputContext.Success = $true
 
-                # if ($actionContext.Data.EmailAdres -ne $actionContext.PreviousData.EmailAdres) {
-                #     $outputContext.AccountReference = $actionContext.Data.EmailAdres
-                #     Write-Information "AccountReference is updated to: [$($outputContext.AccountReference)]"
-                # }
+                if (-not($actionContext.DryRun -eq $true)) {
+                    $updateAccountResponse = Invoke-RestMethod @splatUpdateAccount
+                    if ($updateAccountResponse.status) {
+                        throw "$($updateAccountResponse.errors)"
+                    }
+                    $updateAccountResponseRequestResult = Get-EsisRequestResult -CorrelationId $updateAccountResponse.correlationId -Headers $headers
+                    
+                    $outputContext.AuditLogs.Add([PSCustomObject]@{
+                            Action  = "UpdateAccount" # Optional
+                            Message = "Updated account with AccountReference [$($actionContext.References.Account)]. Properties changed: $($propertiesChanged.Name -join ', ')"
+                            IsError = $false
+                        })
+                }
+                else {
+                    Write-Information "[DryRun] Would update account with AccountReference [$($actionContext.References.Account)]. Properties changed: $($propertiesChanged.Name -join ', ')"
+                }
 
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Message = "Update account was successful, Account property(s) updated: [$($propertiesChanged.name -join ',')]"
-                        IsError = $false
-                    })
                 break
             }
 
             'LinkUserToSsoIdentifier' {
-                Write-Information 'Linking Esis-Employee account to SSO Identifier'
+                $actionMessage = "linking account with AccountReference [$($actionContext.References.Account)] to SSO Identifier [$($actionContext.Data.SsoIdentifier)]"
+
                 $body = @{
                     BestuursNummer     = $actionContext.Configuration.CompanyNumber
-                    GebruikersNaam     = "$($actionContext.Data.GebruikersNaam)"
+                    GebruikersNaam     = "$($actionContext.References.Account)"
                     SsoIdentifier      = "$($actionContext.Data.SsoIdentifier)"
                     PreferredClaimType = "$($actionContext.Data.PreferredClaimType)"
-                } | ConvertTo-Json
+                }
 
+                $splatLinkSso = @{
+                    Uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($body.GebruikersNaam)/koppelenssoidentifier"
+                    Method      = "POST"
+                    Headers     = $headers
+                    Body        = ($body | ConvertTo-Json)
+                    ContentType = 'application/json'
+                    Verbose     = $false
+                    ErrorAction = "Stop"
+                }
 
                 if (-not($actionContext.DryRun -eq $true)) {
-                    $splatLinkSso = @{
-                        Headers  = $headers
-                        Body     = $body
-                        Username = $body.GebruikersNaam
-                    }
                     try {
-                        $ssoLinkResponse = New-EsisLinkUserToSsoIdentifier @splatLinkSso
+                        $ssoLinkResponse = Invoke-RestMethod @splatLinkSso
                         $ssoLinkResponseRequestResult = Get-EsisRequestResult -CorrelationId $ssoLinkResponse.correlationId -Headers $headers
-                    } catch {
+
+                        $outputContext.AuditLogs.Add([PSCustomObject]@{
+                                Action  = "UpdateAccount" # Optional
+                                Message = "Linked account with AccountReference [$($actionContext.References.Account)] to SSO Identifier [$($actionContext.Data.SsoIdentifier)]"
+                                IsError = $false
+                            })
+                    }
+                    catch {
                         if ($_.Exception.Message -match "Gebruiker $($body.GebruikersNaam) heeft al een SSO identifier") {
-                            Write-Warning "$($_.Exception.Message)"
-                        } else {
+                            $outputContext.AuditLogs.Add([PSCustomObject]@{
+                                    Action  = "UpdateAccount" # Optional
+                                    Message = "Skipped linking account with AccountReference [$($actionContext.References.Account)] to SSO Identifier. Reason: Account already linked to SSO Identifier"
+                                    IsError = $false
+                                })
+                        }
+                        else {
                             throw $_
                         }
                     }
-                    if ($ssoLinkResponseRequestResult.isSuccessful -ne $true) {
-                        throw "Could not link user to SSO identifier, Error $($userLinkResponseRequestResult.message)"
-                    }
-                } else {
-                    Write-Information '[DryRun] Link Esis-Employee account to SSO Identifier, will be executed during enforcement'
                 }
-                $outputContext.Success = $true
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Message = "Account was successfully linked to SSO Identifier. SSO Identifier is: [$($actionContext.Data.SsoIdentifier)]"
-                        IsError = $false
-                    })
+                else {
+                    Write-Information "[DryRun] Would link account with AccountReference [$($actionContext.References.Account)] to SSO Identifier [$($actionContext.Data.SsoIdentifier)]"
+                }
+
                 break
             }
 
-
             'NoChanges' {
-                Write-Information "No changes to Esis-Employee account with accountReference: [$($actionContext.References.Account)]"
-                # Fix Differences in the PreviousData and Data
-                if ( $actionContext.Data.SsoIdentifier) {
-                    $outputContext.PreviousData | Add-Member @{
+                $actionMessage = "updating account with accountReference: [$($actionContext.References.Account)]"
+
+                # Set Data with data of correlated account to be able to store current value in Esis
+                $outputContext.Data = $correlatedAccount | Select-Object $outputContext.Data.PsObject.Properties.Name
+                # As there is no GET call available for the SSO identifier, we set it manually
+                if ($actionContext.Data.SsoIdentifier) {
+                    $outputContext.Data | Add-Member @{
                         PreferredClaimType = $actionContext.Data.PreferredClaimType
                         SsoIdentifier      = $actionContext.Data.SsoIdentifier
-                    }
+                    } -Force
                 }
-                $outputContext.Success = $true
+
                 $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Message = 'No changes will be made to the account during enforcement'
+                        Action  = "UpdateAccount" # Optional
+                        Message = "Skipped updating account with AccountReference [$($actionContext.References.Account)]. Reason: No changes."
                         IsError = $false
                     })
+
                 break
             }
 
             'NotFound' {
-                Write-Information "Esis-Employee account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-                $outputContext.Success = $false
-                $outputContext.AuditLogs.Add([PSCustomObject]@{
-                        Message = "Esis-Employee account: [$($actionContext.References.Account)] could not be found, indicating that it may have been deleted"
-                        IsError = $true
-                    })
+                $actionMessage = "updating account with accountReference: [$($actionContext.References.Account)]"
+
+                # Throw terminal error
+                throw "No account found with username: $($actionContext.References.Account)."
+
                 break
             }
         }
     }
-} catch {
-    $outputContext.Success = $false
+}
+catch {
     $ex = $PSItem
     if ($($ex.Exception.GetType().FullName -eq 'Microsoft.PowerShell.Commands.HttpResponseException') -or
         $($ex.Exception.GetType().FullName -eq 'System.Net.WebException')) {
         $errorObj = Resolve-Esis-EmployeeError -ErrorObject $ex
-        $auditMessage = "Could not update Esis-Employee account. Error: $($errorObj.FriendlyMessage)"
-        Write-Warning "Error at Line '$($errorObj.ScriptLineNumber)': $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
-    } else {
-        $auditMessage = "Could not update Esis-Employee account. Error: $($ex.Exception.Message)"
-        Write-Warning "Error at Line '$($ex.InvocationInfo.ScriptLineNumber)': $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
+        $auditMessage = "Error $($actionMessage). Error: $($errorObj.FriendlyMessage)"
+        $warningMessage = "Error at Line [$($errorObj.ScriptLineNumber)]: $($errorObj.Line). Error: $($errorObj.ErrorDetails)"
     }
+    else {
+        $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Message)"
+        $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
+    }
+
+    Write-Warning $warningMessage
+
     $outputContext.AuditLogs.Add([PSCustomObject]@{
             Message = $auditMessage
             IsError = $true
         })
+}
+finally {
+    # Check if auditLogs contains errors, if no errors are found, set success to true
+    if (-NOT($outputContext.AuditLogs.IsError -contains $true)) {
+        $outputContext.Success = $true
+    }
 }
