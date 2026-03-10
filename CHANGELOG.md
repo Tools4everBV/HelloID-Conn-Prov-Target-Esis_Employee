@@ -8,16 +8,34 @@ All notable changes to this project will be documented in this file. The format 
 
 - Added new task-based permissions system with `permissions/taakstellingen/subPermissions.ps1`
 - Added new task-based permissions import script `permissions/taakstellingen/subPermissionsImport.ps1`
+- Added Board Role permission type (`permissions/rollen op bestuur/`) for board-level administrative access
+- Added Location Role permission type (`permissions/rollen op vestiging/`) for location-specific student data access
 - Added `ConvertTo-FlatObject` function to `update.ps1` and `delete.ps1` for improved data comparison
 - Added comprehensive error handling with `Resolve-Esis-EmployeeError` function across all scripts
 - Added SSO identifier linking and unlinking functionality in create, update, and delete operations
 - Added `Get-EsisUserEmployeeRequest` and `Get-EsisUserAndEmployeeList` helper functions for improved code organization
 - Added retry logic for API calls with configurable `MaxRetryCount` and `RetryWaitDuration` parameters
+- Added comprehensive permission type documentation to README explaining differences between Location Activation, Location Role, and Board Role
+- Added configuration examples for all three permission types in README
+- Added HelloID Icon URL section to README
+- Added detailed API endpoints table with HTTP methods to README
+- Added hardcoded mapping sections for all three permission types to README
+- Added `deleteAccount` and `unlinkSsoIdentifierOnDelete` configuration options to control delete behavior
 
 ### Changed
 
 - Migrated from department-based permissions to task-based permissions approach
 - Renamed `permissions/tasks/` folder to `permissions/taakstellingen/` to better reflect Esis terminology
+- Reorganized permissions into three distinct types with English naming conventions:
+  - `permissions/activatie op vestiging (taakstellingen)/` for Location Activation
+  - `permissions/rollen op vestiging/` for Location Role
+  - `permissions/rollen op bestuur/` for Board Role
+- Standardized all permission terminology from Dutch to English throughout codebase and documentation
+- Updated all permission scripts to use "Location Activation", "Location Role", and "Board Role" terminology
+- Removed `Write-Warning` from catch blocks across all helper functions for cleaner error handling
+- Updated README to V2 template structure with improved organization and comprehensive documentation
+- Updated Connection settings table in README to include all 9 configuration items (previously only showed 4)
+- Replaced all "taakstelling" references with "location activation" in documentation for consistency
 - Updated employee correlation to use `basispoortEmailadres` field from Esis matched against `emailadres` from account data
 - Refactored `create.ps1` to include improved correlation logic and SSO identifier handling
 - Refactored `update.ps1` with enhanced change detection and SSO identifier management
@@ -32,9 +50,8 @@ All notable changes to this project will be documented in this file. The format 
   - `update.ps1`
   - `delete.ps1`
   - `import.ps1`
-  - `permissions/taakstellingen/subPermissions.ps1`
-  - `permissions/taakstellingen/subPermissionsImport.ps1`
-- Updated `permissions/taakstellingen/subPermissions.ps1` to use configurable scriptblock-based lookup keys (`$brin6LookupKey` and `$functionLookupKey`)
+  - All permission scripts (grant, revoke, import for all three permission types)
+- Updated `permissions/activatie op vestiging (taakstellingen)/subPermissions.ps1` to use configurable scriptblock-based lookup keys (`$brin6LookupKey` and `$functionLookupKey`)
 - Changed `$brin6LookupKey` from `CostCenter.ExternalId` to `Custom.brin6` for more flexible BRIN code mapping
 - Changed default function mapping in permissions from 'Leraar' to 'Groepsleerkracht'
 - Updated field mapping configuration to properly separate SSO and password-based authentication fields
@@ -44,7 +61,8 @@ All notable changes to this project will be documented in this file. The format 
   - **Aanstellingen** (appointments): Define employee function/role
   - **Taakstellingen** (assignments): Define at which location (BRIN6) the function is performed
   - **User vs Employee**: Clarified distinction between gebruiker (user account) and medewerker (employee record)
-- Added critical API limitation documentation: taakstellingen do NOT automatically translate to rollen (roles) - roles must be assigned manually
+- Added critical API limitation documentation: Location Activations do NOT automatically grant data access - roles must be assigned separately
+- Documented distinction between Location Activation (visibility) and Roles (data access)
 - Documented that `roepnaam` is mandatory for all lifecycle actions and must be mapped with actual value
 - Documented that `bestuursnummer` is automatically added to all API requests from configuration
 - Clarified that connector is exclusively for employee accounts, not student accounts
