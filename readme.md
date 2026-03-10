@@ -14,7 +14,7 @@
   - [Introduction](#introduction)
   - [Supported features](#supported-features)
   - [Getting started](#getting-started)
-    - [Prerequisites](#prerequisites)
+    - [Requirements](#requirements)
     - [Connection settings](#connection-settings)
     - [Correlation configuration](#correlation-configuration)
     - [Field mapping](#field-mapping)
@@ -264,14 +264,11 @@ The following endpoints are used by the connector
 | /v1/api/gebruiker/:username/deactiverenopvestiging                     | Deactivate user from location (taakstelling) |
 
 ### API documentation
-[API Swagger Documentation](https://proxies-dev.rovictonline.nl/idp-proxy/index.html)
+[API Swagger Documentation](https://proxies-develop.rovict.nl/idp-develop/swagger/index.html)
 
 ## Getting help
 > [!TIP]
 > _For more information on how to configure a HelloID PowerShell connector, please refer to our [documentation](https://docs.helloid.com/en/provisioning/target-systems/powershell-v2-target-systems.html) pages_.
-
-> [!TIP]
->  _If you need help, feel free to ask questions on our [forum](https://forum.helloid.com/forum/helloid-connectors/provisioning/1065-helloid-provisioning-target-esis-employee)_.
 
 ## HelloID docs
 
