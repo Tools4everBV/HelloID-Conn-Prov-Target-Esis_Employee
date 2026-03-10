@@ -1,5 +1,5 @@
 #########################################################
-# HelloID-Conn-Prov-Target-Esis-Employee-SubPermissions
+# HelloID-Conn-Prov-Target-Esis-Employee-SubPermissions-Location-Activation
 # PowerShell V2
 #########################################################
 
@@ -207,7 +207,7 @@ try {
                 })
 
             if (-Not $currentPermissions.ContainsKey($permission.Name)) {
-                $actionMessage = "granting permission [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
+                $actionMessage = "granting location activation [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
 
                 $grantPermissionBody = @{
                     "brin6"          = $permission.Name.split('~')[0]
@@ -239,16 +239,12 @@ try {
 
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
                             Action  = "GrantPermission" # Optional
-                            Message = "Granted permission [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]. Message [$($grantPermissionRequestResult.message)], action [$($grantPermissionRequestResult.action)]"
+                            Message = "Granted location activation [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]. Message [$($grantPermissionRequestResult.message)], action [$($grantPermissionRequestResult.action)]"
                             IsError = $false
                         })
                 }
                 else {
-                    Write-Information "[DryRun] Would grant permission [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
-                    Write-Information "Uri: $($grantPermissionSplatParams['Uri'])"
-                    Write-Information "Body: $($grantPermissionSplatParams['Body'])"
-                    Write-Information "Method: $($grantPermissionSplatParams['Method'])"
-                    Write-Information "ContentType: $($grantPermissionSplatParams['ContentType'])"
+                    Write-Information "[DryRun] Would grant location activation [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
                 }
             }
         }
@@ -281,7 +277,7 @@ try {
         # try catch within the loop to handle errors for each permission
         try {
             if (-Not $desiredPermissions.ContainsKey($permission.Name)) {
-                $actionMessage = "revoking permission [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
+                $actionMessage = "revoking location activation [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
 
                 $revokePermissionBody = @{
                     "brin6"          = $permission.Name.split('~')[0]
@@ -313,16 +309,12 @@ try {
 
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
                             Action  = "RevokePermission" # Optional
-                            Message = "Revoked permission [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]. Message [$($revokePermissionRequestResult.message)]"
+                            Message = "Revoked location activation [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]. Message [$($revokePermissionRequestResult.message)]"
                             IsError = $false
                         })
                 }
                 else {
-                    Write-Information "[DryRun] Would revoke permission [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
-                    Write-Information "Uri: $($revokePermissionSplatParams['Uri'])"
-                    Write-Information "Body: $($revokePermissionSplatParams['Body'])"
-                    Write-Information "Method: $($revokePermissionSplatParams['Method'])"
-                    Write-Information "ContentType: $($revokePermissionSplatParams['ContentType'])"
+                    Write-Information "[DryRun] Would revoke location activation [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
                 }
             }
             else {

@@ -1,11 +1,11 @@
 #################################################
-# HelloID-Conn-Prov-Target-Esis_Employee-ImportSubPermission
+# HelloID-Conn-Prov-Target-Esis_Employee-ImportSubPermissionEntitlements-Location-Activation
 # PowerShell V2
 #################################################
 
 # Configure, must be the same as the values used in retreive permissions
-$permissionReference = 'Taakstellingen'
-$permissionDisplayName = 'Taakstellingen'
+$permissionReference = 'Dynamic Location Activation'
+$permissionDisplayName = 'Dynamic Location Activation'
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -162,7 +162,7 @@ function Get-EsisUserAndEmployeeList {
 #endregion
 
 try {
-    Write-Information 'Starting target sub-permissions import'
+    Write-Information 'Starting import of location activation sub-permission entitlements'
 
     $actionMessage = 'creating access token'
     $accessToken = Get-EsisAccessToken
@@ -174,13 +174,13 @@ try {
         'Content-Type'      = 'application/json'
     }
 
-    $actionMessage = 'querying tasks'
+    $actionMessage = 'querying user location activations (assignments and tasks)'
     $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
     $esisUserAndEmployeeList = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers
     $esisUsers = $esisUserAndEmployeeList.gebruikerLijst.gebruikers
-    Write-Information "Queried tasks. Result count: $($esisUsers.medewerkers.aanstellingen.taakstellingen.Count)"
+    Write-Information "Queried user location activations. Result count: $($esisUsers.medewerkers.aanstellingen.taakstellingen.Count)"
 
-    $actionMessage = 'importing sub-permissions to HelloID'
+    $actionMessage = 'importing location activation sub-permission entitlements to HelloID'
     $importedSubPermissions = 0
     $currentDate = Get-Date
     foreach ($esisUser in $esisUsers) {
@@ -237,7 +237,7 @@ try {
         }
     }
 
-    Write-Information "Target sub-permissions import completed. Result count: $($importedSubPermissions)"
+    Write-Information "Location activation sub-permission entitlements import completed. Result count: $($importedSubPermissions)"
 }
 catch {
     $ex = $PSItem
