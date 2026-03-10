@@ -234,8 +234,7 @@ $functionLookupKey = { $_.Title.ExternalId }
 > The `$brin6LookupKey` uses `Custom.brin6` by default. The script will validate that the BRIN code is at least 6 characters long.
 
 **Location Activation Structure:**
-- **Aanstelling** (appointment): Defines the function (e.g., Groepsleerkracht, Director)
-- **Location Activation** (taakstelling): Links employee to a location (BRIN6) with that function
+- Links employee to a location (BRIN6) with a specific function (e.g., Groepsleerkracht, Director)
 - **Permission Reference Format**: `BRIN6~Function` (e.g., `12AB34~Groepsleerkracht`)
 
 #### 2. Location Role Configuration
