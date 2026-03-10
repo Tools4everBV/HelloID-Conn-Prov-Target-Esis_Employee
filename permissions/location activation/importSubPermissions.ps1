@@ -1,5 +1,5 @@
 #################################################
-# HelloID-Conn-Prov-Target-Esis_Employee-ImportSubPermissionEntitlements-Location-Activation
+# HelloID-Conn-Prov-Target-Esis_Employee-ImportSubPermissions-Location-Activation
 # PowerShell V2
 #################################################
 
