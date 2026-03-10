@@ -176,7 +176,6 @@ function Get-EsisUserEmployeeRequest {
         Write-Output $response.correlationId
     }
     catch {
-        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
