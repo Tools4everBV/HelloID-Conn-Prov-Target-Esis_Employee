@@ -144,7 +144,6 @@ function Get-EsisRequestResult {
         }  while ($true)
     }
     catch {
-        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
