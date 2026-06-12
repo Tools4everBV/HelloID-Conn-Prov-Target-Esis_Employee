@@ -129,6 +129,7 @@ function Get-EsisRequestResult {
 		}  while ($true)
 	}
 	catch {
+		Write-Warning "$($splatRestRequest.Uri)"
 		$PSCmdlet.ThrowTerminatingError($_)
 	}
 }
@@ -152,6 +153,7 @@ function Get-EsisUserEmployeeRequest {
 		Write-Output $response.correlationId
 	}
 	catch {
+		Write-Warning "$($splatRestRequest.Uri)"
 		$PSCmdlet.ThrowTerminatingError($_)
 	}
 }
