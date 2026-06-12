@@ -176,6 +176,7 @@ function Get-EsisUserEmployeeRequest {
         Write-Output $response.correlationId
     }
     catch {
+        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -410,6 +411,20 @@ try {
                 }
 
                 $body = $actionContext.Data
+
+                # If $actionContext.Data does not contain 'personeelsnummer', set this with the current value of the account, as this is a required field for the update account endpoint
+                if (-not($actionContext.Data.personeelsnummer) -and $correlatedAccount.personeelsnummer) {
+                    $body | Add-Member @{
+                        personeelsnummer = $correlatedAccount.personeelsnummer
+                    } -Force
+                }
+
+                # If $actionContext.Data does not contain 'roepnaam', set this with the current value of the account, as this is a required field for the update account endpoint
+                if (-not($actionContext.Data.roepnaam) -and $correlatedAccount.roepnaam) {
+                    $body | Add-Member @{
+                        roepnaam = $correlatedAccount.roepnaam
+                    } -Force
+                }
 
                 # Add required property BestuursNummer
                 $body | Add-Member @{
