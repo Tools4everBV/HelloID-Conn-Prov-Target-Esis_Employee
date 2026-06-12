@@ -192,7 +192,6 @@ try {
                         PermissionReference = @{
                             Reference = $role.rolUniekId
                         }
-                        DisplayName         = $permissionDisplayName
                     }
                 )
 

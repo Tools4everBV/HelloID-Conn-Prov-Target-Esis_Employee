@@ -218,7 +218,6 @@ try {
                                             PermissionReference      = @{
                                                 Reference = $permissionReference
                                             }
-                                            DisplayName              = $permissionDisplayName
                                             SubPermissionReference   = @{
                                                 Id = "$brin6~$function"
                                             }
