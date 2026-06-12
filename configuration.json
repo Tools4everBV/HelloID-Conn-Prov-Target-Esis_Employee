@@ -1,25 +1,5 @@
 [
   {
-    "defaultValue": "",
-    "key": "ClientId",
-    "templateOptions": {
-      "description": "The ClientId to connect to the API",
-      "label": "ClientId",
-      "required": true
-    },
-    "type": "input"
-  },
-  {
-    "defaultValue": "",
-    "type": "input",
-    "key": "ClientSecret",
-    "templateOptions": {
-      "type": "password",
-      "label": "ClientSecret",
-      "required": true
-    }
-  },
-  {
     "defaultValue": "https://proxies-<environment>.rovictonline.nl/idp-proxy",
     "key": "BaseUrl",
     "templateOptions": {
@@ -36,6 +16,26 @@
       "description": "The URL to get the bearer token.",
       "label": "BaseUrlToken",
       "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "key": "ClientId",
+    "templateOptions": {
+      "description": "The ClientId to connect to the API",
+      "label": "ClientId",
+      "required": true
+    },
+    "type": "input"
+  },
+  {
+    "defaultValue": "",
+    "key": "ClientSecret",
+    "templateOptions": {
+      "label": "ClientSecret",
+      "required": true,
+      "type": "password"
     },
     "type": "input"
   },
@@ -68,5 +68,25 @@
       "required": true
     },
     "type": "input"
+  },
+  {
+    "defaultValue": false,
+    "key": "deleteAccount",
+    "templateOptions": {
+      "description": "",
+      "label": "Delete the account when revoking the entitlement",
+      "required": false
+    },
+    "type": "checkbox"
+  },
+  {
+    "defaultValue": false,
+    "key": "unlinkSsoIdentifierOnDelete",
+    "templateOptions": {
+      "description": "",
+      "label": "Unlink the SSO identifier from the account when revoking the entitlement (only possible if not deleting the account)",
+      "required": false
+    },
+    "type": "checkbox"
   }
 ]
