@@ -1,11 +1,7 @@
 #################################################
-# HelloID-Conn-Prov-Target-Esis_Employee-ImportSubPermissions-Location-Role
+# HelloID-Conn-Prov-Target-Esis_Employee-Permissions-Location-Role
 # PowerShell V2
 #################################################
-
-# Configure, must be the same as the values used in retreive permissions
-$permissionReferencePrefix = 'Dynamic Location Role - '
-$permissionDisplayNamePrefix = 'Dynamic Location Role - '
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -89,17 +85,15 @@ function Get-EsisUserEmployeeRequest {
     )
     try {
         $splatRestRequest = @{
-            uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijstverzoek/"
-            Method      = "GET"
-            Headers     = $Headers
-            ContentType = 'application/json'
-            Verbose     = $false
-            ErrorAction = "Stop"
+            uri     = "$($actionContext.Configuration.BaseUrl)/v1/api/bestuur/$($actionContext.Configuration.CompanyNumber)/gebruikermedewerkerlijstverzoek/"
+            Method  = "GET"
+            Headers = $Headers
         }
         $response = Invoke-RestMethod @splatRestRequest
         Write-Output $response.correlationId
     }
     catch {
+        Write-Warning "$($splatRestRequest.Uri)"
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
@@ -161,7 +155,7 @@ function Get-EsisUserAndEmployeeList {
 #endregion
 
 try {
-    Write-Information 'Starting import of location role sub-permission entitlements'
+    Write-Information 'Starting location role entitlement import'
 
     $actionMessage = 'creating access token'
     $accessToken = Get-EsisAccessToken
@@ -173,51 +167,34 @@ try {
         'Content-Type'      = 'application/json'
     }
 
-    $actionMessage = 'querying users with location roles'
+    $actionMessage = 'querying user and employee request'
     $correlationIdGetUserMain = Get-EsisUserEmployeeRequest -Headers $headers
+
+    $actionMessage = 'querying location roles'
     $esisUserAndEmployeeList = Get-EsisUserAndEmployeeList -CorrelationId $correlationIdGetUserMain -Headers $headers
-    $esisUsers = $esisUserAndEmployeeList.gebruikerLijst.gebruikers
-    Write-Information "Queried users with location roles. Result count: $($esisUsers.rollen.Count)"
+    $esisRoles = $esisUserAndEmployeeList.gebruikerLijst.rollen
+    Write-Information "Queried location roles. Result count: $($esisRoles.Count)"
 
-    $actionMessage = 'importing location role sub-permission entitlements to HelloID'
-    $importedSubPermissions = 0
-    foreach ($esisUser in $esisUsers) {
-        if ($null -ne $esisUser.rollen) {
-            # Only import roles assigned to a location (brin6)
-            foreach ($role in $esisUser.rollen | Where-Object { -not[string]::IsNullOrEmpty($_.brin6) }) {
-                #region Custom - RS - 2025/09/03 - Append value with 00 if only 4 characters long
-                $brin6 = $role.brin6
-                if ($brin6.length -ge 4) {
-                    $brin6 = $brin6.Substring(0, 4) + "00"
+    $actionMessage = 'filtering for active location roles'
+    $activeEsisRoles = $esisRoles | Where-Object { $_.isActief -eq $true } | Sort-Object -Property rolUniekId -Unique
+    Write-Information "Filtered for active location roles. Result count: $($activeEsisRoles.Count)"
+
+    $actionMessage = "importing location role permissions to HelloID"
+    foreach ($activeEsisRole in $activeEsisRoles) {
+        $actionMessage = "importing location role [$($activeEsisRole.rolNaam)] to HelloID"
+
+        # Make sure displayname is not too long (max 100 characters)
+        $displayName = "Dynamic Location Role - $($activeEsisRole.rolNaam)"
+        $displayName = $displayName.substring(0, [System.Math]::Min(100, $displayName.Length))
+        $outputContext.Permissions.Add(
+            @{
+                displayName    = $displayName
+                identification = @{
+                    Id = "Dynamic Location Role - $($activeEsisRole.rolUniekId)"
                 }
-                else {
-                    throw "Provided brincode [$brin6] is not exactly 6 characters long, this should not be possible, please look into this or contact support."
-                }
-                #endregion
-
-                $roleId = "$($role.rolUniekId)"
-
-                Write-Output @(
-                    @{
-                        AccountReferences        = @(
-                            $esisUser.gebruikersNaam
-                        )
-                        PermissionReference      = @{
-                            Id = ("$permissionReferencePrefix" + "$roleId")
-                        }
-                        SubPermissionReference   = @{
-                            Id = "$brin6~$roleId"
-                        }
-                        SubPermissionDisplayName = "$brin6~$roleId"
-                    }
-                )
-
-                $importedSubPermissions++
             }
-        }
+        )
     }
-
-    Write-Information "Location role sub-permission entitlements import completed. Result count: $($importedSubPermissions)"
 }
 catch {
     $ex = $PSItem

@@ -3,20 +3,8 @@
 # PowerShell V2
 #########################################################
 
-# Script Configuration
-# Role Mapping for when no mapping is found - must be the ID of the role, not the name
-$defaultRole = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
-
-# This is used to map the function name from the HelloID contract to the Esis Role ID (has to be the ID, cannot be name) for the Department assignment
-$mappingTableFunctions = @{
-    MEDSBI  = 'Director'
-    MEDSBI2 = 'Director'
-    MEDSBI3 = 'Support'
-}
-
 # This is used to locate the brin6 and function from the HelloID contract
 $brin6LookupKey = { $_.Custom.brin6 }
-$functionLookupKey = { $_.Title.ExternalId }
 
 # Enable TLS1.2
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
@@ -158,25 +146,15 @@ try {
 
     # Collect desired permissions
     $desiredPermissions = @{}
+    $roleName = $($actionContext.PermissionDisplayName)
+    $roleId = $($actionContext.References.Permission.Id)
     if (-Not($actionContext.Operation -eq "revoke")) {
         foreach ($contract in $personContext.Person.Contracts) {
             Write-Information "Contract: $($contract.ExternalId). In condition: $($contract.Context.InConditions)"
             if ($contract.Context.InConditions -OR ($actionContext.DryRun -eq $true)) {
                 $brin6 = ($contract | Select-Object $brin6LookupKey).$brin6LookupKey
-                if ($brin6.length -lt 6) {
-                    throw "Provided brincode [$brin6] is not exactly 6 characters long, this should not be possible, please look into this or contact support."
-                }
-
-                $contractFunctionValue = ($contract | Select-Object $functionLookupKey).$functionLookupKey
-                if ([string]::IsNullOrEmpty($mappingTableFunctions[$contractFunctionValue])) {
-                    Write-Information "No Mapping found for function [$contractFunctionValue] using default role [$defaultRole]"
-                    $role = $defaultRole
-                }
-                else {
-                    $role = $mappingTableFunctions[$contractFunctionValue]
-                }
                 
-                $desiredPermissions["$($brin6)~$($role)"] = "$($brin6)~$($role)"
+                $desiredPermissions["$($brin6)~$($roleId)"] = "$($brin6)~$($roleName)"
             }
         }
     }
@@ -206,7 +184,7 @@ try {
                 })
 
             if (-Not $currentPermissions.ContainsKey($permission.Name)) {
-                $actionMessage = "granting location role [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
+                $actionMessage = "granting location role [$($permission.Value) $($permission.Name))] to account with AccountReference: [$($actionContext.References.Account)]"
 
                 $grantPermissionBody = @{
                     "bestuursnummer" = $actionContext.Configuration.CompanyNumber
@@ -237,12 +215,12 @@ try {
 
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
                             Action  = "GrantPermission" # Optional
-                            Message = "Granted location role [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]. Message [$($grantPermissionRequestResult.message)], action [$($grantPermissionRequestResult.action)]"
+                            Message = "Granted location role [$($permission.Value) $($permission.Name))] to account with AccountReference: [$($actionContext.References.Account)]. Message [$($grantPermissionRequestResult.message)], action [$($grantPermissionRequestResult.action)]"
                             IsError = $false
                         })
                 }
                 else {
-                    Write-Information "[DryRun] Would grant location role [$($permission.Value)] to account with AccountReference: [$($actionContext.References.Account)]"
+                    Write-Information "[DryRun] Would grant location role [$($permission.Value) $($permission.Name))] to account with AccountReference: [$($actionContext.References.Account)]"
                 }
             }
         }
@@ -275,7 +253,7 @@ try {
         # try catch within the loop to handle errors for each permission
         try {
             if (-Not $desiredPermissions.ContainsKey($permission.Name)) {
-                $actionMessage = "revoking location role [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
+                $actionMessage = "revoking location role [$($permission.Value) $($permission.Name))] from account with AccountReference: [$($actionContext.References.Account)]"
 
                 $revokePermissionBody = @{
                     "bestuursnummer" = $actionContext.Configuration.CompanyNumber
@@ -285,7 +263,7 @@ try {
 
                 $revokePermissionSplatParams = @{
                     uri         = "$($actionContext.Configuration.BaseUrl)/v1/api/gebruiker/$($actionContext.References.Account)/ontkoppelenvanrolopvestiging"
-                    Method      = 'POST'
+                    Method      = 'DELETE'
                     Headers     = $Headers
                     Body        = ($revokePermissionBody | ConvertTo-Json -Depth 10)
                     ContentType = 'application/json'
@@ -306,12 +284,12 @@ try {
 
                     $outputContext.AuditLogs.Add([PSCustomObject]@{
                             Action  = "RevokePermission" # Optional
-                            Message = "Revoked location role [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]. Message [$($revokePermissionRequestResult.message)]"
+                            Message = "Revoked location role [$($permission.Value) $($permission.Name))] from account with AccountReference: [$($actionContext.References.Account)]. Message [$($revokePermissionRequestResult.message)]"
                             IsError = $false
                         })
                 }
                 else {
-                    Write-Information "[DryRun] Would revoke location role [$($permission.Value)] from account with AccountReference: [$($actionContext.References.Account)]"
+                    Write-Information "[DryRun] Would revoke location role [$($permission.Value) $($permission.Name))] from account with AccountReference: [$($actionContext.References.Account)]"
                 }
             }
             else {
